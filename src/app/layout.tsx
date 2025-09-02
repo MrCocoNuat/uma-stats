@@ -26,6 +26,7 @@ export default function RootLayout({
     <html lang="en">
       <head>
         <title>UmaMusume Statistics</title>
+        <meta name="apple-mobile-web-app-title" content="MyWebSite" />
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
