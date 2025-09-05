@@ -81,7 +81,7 @@ function NHitsStatter({pullRates}: {pullRates: PullRates}){
             onChange={handleSliderChange}
             className="w-full"
         />
-        <FunctionValueLineChart data={distributions} highlightDataset={desiredBreaks}/>
+        <FunctionValueLineChart data={distributions} highlightDataset={desiredBreaks} setHighlightDataset={i => {console.debug(i); if (typeof i === "number") setDesiredBreaks(i);}}/>
     </div>
 }
 

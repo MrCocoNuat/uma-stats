@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import {
   Chart as ChartJS,
   LineElement,
@@ -29,9 +29,77 @@ declare module "chart.js" {
   interface PluginOptionsByType<TType> {
     crosshairHighlight?: {
       highlightDataset?: number;
-    };
+    }
   }
 }
+
+const DATASET_CLICK_Y_THRESHOLD =25; // pixels
+
+function datasetClickPlugin(setHighlightDataset: ((index: number) => void)) {
+  return {
+  id: "datasetClick",
+  afterEvent: (chart: Chart, args: { event: ChartEvent }) => {
+    const { event } = args;
+    if (event.type !== "click") {
+      return;
+    }
+
+    const { x: mouseX, y: mouseY } = getRelativePosition(event, chart);
+
+    const datasetMetas = chart.data.datasets.map((_, idx) => chart.getDatasetMeta(idx));
+    // Build xPointMaps for all datasets directly
+    const allXPointMaps: Record<number, PointElement>[] = datasetMetas.map((meta) => {
+      const xPointMap: Record<number, PointElement> = {};
+      for (const point of meta.data) {
+      const rx = Math.round(point.x);
+      xPointMap[rx] = point as PointElement;
+      }
+      return xPointMap;
+    });
+
+    // Find the closest point among all datasets at the clicked x
+    let closestDatasetIdx: number | null = null;
+    let closestYDist = Number.POSITIVE_INFINITY;
+
+    console.debug("Mouse position:", mouseX, mouseY);
+    if (typeof mouseX === "number" && typeof mouseY === "number") {
+      const rx = Math.round(mouseX);
+
+      allXPointMaps.forEach((xPointMap, idx) => {
+        let point: PointElement | undefined;
+        // Try up to 5 px away if not found
+        for (let offset = 0; offset <= 5; ++offset) {
+          if (xPointMap[rx + offset]) {
+          point = xPointMap[rx + offset];
+          break;
+          }
+          if (xPointMap[rx - offset]) {
+          point = xPointMap[rx - offset];
+          break;
+          }
+        }
+        if (point) {
+          const dist = Math.abs(point.y - mouseY);
+          if (dist < closestYDist && dist <= DATASET_CLICK_Y_THRESHOLD) {
+          closestYDist = dist;
+          closestDatasetIdx = idx;
+          }
+        }
+      });
+      
+    }
+
+    console.debug("Closest dataset index:", closestDatasetIdx);
+
+    console.debug("setHighlightedDataset function:", setHighlightDataset);
+    if (!setHighlightDataset ) return;
+
+    if (closestDatasetIdx !== null) {
+      setHighlightDataset(closestDatasetIdx);
+    }
+  },
+}
+};
 
 // Chart.js plugin for crosshair and point highlight using an overlay canvas
 const CrosshairHighlightPlugin = {
@@ -151,8 +219,10 @@ const CrosshairHighlightPlugin = {
   },
 };
 
-// Register the plugin globally
-ChartJS.register(CrosshairHighlightPlugin);
+// Register the plugins globally
+ChartJS.register(
+  CrosshairHighlightPlugin,
+);
 
 export interface FunctionValueLineChartProps {
   /** Array of function values: [f(1), f(2), f(3), ...] OR array of the mentioned*/
@@ -162,16 +232,23 @@ export interface FunctionValueLineChartProps {
   /** Optional: dataset label */
   label?: string;
   highlightDataset?: number; // index of dataset to highlight
+  setHighlightDataset?: (index: number) => void; // callback to set highlighted dataset
 }
 
 const FunctionValueLineChart: React.FC<FunctionValueLineChartProps> = ({
     data,
     labels,
     label = "f(x)",
-    highlightDataset
+    highlightDataset,
+    setHighlightDataset
 }) => {
     // Handle both single and multiple datasets
     const isMultipleDatasets = Array.isArray(data[0]);
+
+    let inlinePlugins = [];
+    if (setHighlightDataset) {
+      inlinePlugins.push(datasetClickPlugin(setHighlightDataset));
+    }
 
     // If no labels provided, use [1, 2, 3, ...]
     const maxDatasetLength = isMultipleDatasets? (data as number[][]).reduce((max, arr) => Math.max(max, arr.length), 0) : (data as number[]).length;
@@ -211,7 +288,7 @@ const FunctionValueLineChart: React.FC<FunctionValueLineChartProps> = ({
       },
       crosshairHighlight: {
         highlightDataset: highlightDataset ?? 0,
-      },
+      }
     },
     scales: {
       x: {
@@ -231,7 +308,7 @@ const FunctionValueLineChart: React.FC<FunctionValueLineChartProps> = ({
 
   return (
     <div style={{ width: 600, height: 400 }}>
-      <Line data={chartData} options={options} />
+      <Line data={chartData} options={options} plugins={inlinePlugins} />
     </div>
   );
 };
