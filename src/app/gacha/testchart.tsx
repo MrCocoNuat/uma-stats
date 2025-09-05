@@ -8,8 +8,11 @@ import {
   Tooltip,
   Legend,
   Chart,
+  ChartEvent,
 } from "chart.js";
 import { Line } from "react-chartjs-2";
+import { after } from "node:test";
+import { getRelativePosition } from "chart.js/helpers";
 
 // Register necessary Chart.js components
 ChartJS.register(
@@ -30,41 +33,45 @@ declare module "chart.js" {
   }
 }
 
-// Chart.js plugin for crosshair and point highlight
+// Chart.js plugin for crosshair and point highlight using an overlay canvas
 const CrosshairHighlightPlugin = {
   id: "crosshairHighlight",
-  afterDraw: (chart: Chart & {_lastEvent: {x? : number, y? : number}}) => {
-    const { ctx, chartArea, scales, tooltip } = chart;
-    if (!chartArea) return;
+  afterInit: (chart: Chart & {_crosshairOverlayCanvas? : HTMLCanvasElement}) => {
+    // Create overlay canvas if not already present
+    if (!chart._crosshairOverlayCanvas) {
+      const mainCanvas = chart.canvas;
+      const overlay = document.createElement("canvas");
+      overlay.style.position = "absolute";
+      overlay.style.left = mainCanvas.offsetLeft + "px";
+      overlay.style.top = mainCanvas.offsetTop + "px";
+      overlay.width = mainCanvas.width;
+      overlay.height = mainCanvas.height;
+      overlay.style.pointerEvents = "none";
+      overlay.className = "chartjs-crosshair-overlay";
+      mainCanvas.parentNode?.appendChild(overlay);
+      chart._crosshairOverlayCanvas = overlay;
+    }
+  },
+  afterEvent: (chart: Chart  & {_crosshairOverlayCanvas? : HTMLCanvasElement}, args: { event: ChartEvent }) => {
+    const overlay: HTMLCanvasElement | undefined = chart._crosshairOverlayCanvas;
+    if (!overlay) return;
+    const ctx = overlay.getContext("2d");
+    if (!ctx) return;
+    const { chartArea } = chart;
+    const { event } = args;
+    if (!event || !event.x || !event.y) {
+      ctx.clearRect(0, 0, overlay.width, overlay.height);
+      return;
+    }
+
+    const { x: mouseX, y: mouseY } = getRelativePosition(event, chart);
+
+    // Clear overlay before drawing new crosshairs to avoid artifacts.
+    ctx.clearRect(0, 0, overlay.width, overlay.height);
 
     // Find the highlighted dataset index (or default to 0)
     const highlightDataset =
       chart.options.plugins?.crosshairHighlight?.highlightDataset ?? 0;
-
-    // Get mouse position relative to chart (safe, public API)
-    let mouseX: number | null = null;
-    let mouseY: number | null = null;
-
-    const activeElements = chart.getActiveElements();
-    if (activeElements && activeElements.length > 0) {
-        // Try to get the position from the first active element
-        const element = activeElements[0].element;
-        // Chart.js public API: getProps
-        if (typeof element.getProps === "function") {
-            const { x, y } = element.getProps(["x", "y"], true);
-            mouseX = x;
-            mouseY = y;
-        }
-    }
-
-    // Fallback: use not public chart._lastEvent if available
-    if ((mouseX === null || mouseY === null) && (chart)._lastEvent) {
-    const evt = (chart)._lastEvent;
-    if (evt.x !== undefined && evt.y !== undefined) {
-        mouseX = evt.x;
-        mouseY = evt.y;
-    }
-    }
 
     // Find the dataset to highlight
     const datasetMeta = chart.getDatasetMeta(highlightDataset);
@@ -126,6 +133,22 @@ const CrosshairHighlightPlugin = {
     ctx.stroke();
     ctx.restore();
   },
+  afterResize: (chart: Chart & {_crosshairOverlayCanvas? : HTMLCanvasElement}) => {
+    // Resize overlay canvas to match chart
+    const overlay: HTMLCanvasElement | undefined = chart._crosshairOverlayCanvas;
+    if (overlay) {
+      overlay.width = chart.width;
+      overlay.height = chart.height;
+    }
+  },
+  beforeDestroy: (chart: Chart & {_crosshairOverlayCanvas? : HTMLCanvasElement}) => {
+    // Remove overlay canvas
+    const overlay: HTMLCanvasElement | undefined = chart._crosshairOverlayCanvas;
+    if (overlay && overlay.parentNode) {
+      overlay.parentNode.removeChild(overlay);
+    }
+    chart._crosshairOverlayCanvas = undefined;
+  },
 };
 
 // Register the plugin globally
@@ -172,7 +195,6 @@ const FunctionValueLineChart: React.FC<FunctionValueLineChartProps> = ({
                 borderColor: "red"
             }];
 
-      console.log(datasets);
   const chartData = {
     labels: chartLabels,
     datasets: datasets 
