@@ -1,4 +1,4 @@
-// @ts-ignore
+// @ts-expect-error // no dtypes available
 import Statistics from 'statistics.js';
 
 // only really use static methods, so no need to meaningfully instantiate with data

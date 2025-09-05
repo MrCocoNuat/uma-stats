@@ -7,6 +7,7 @@ import {
   LinearScale,
   Tooltip,
   Legend,
+  Chart,
 } from "chart.js";
 import { Line } from "react-chartjs-2";
 
@@ -20,10 +21,19 @@ ChartJS.register(
   Legend
 );
 
+// Extend Chart.js types to include crosshairHighlight plugin options
+declare module "chart.js" {
+  interface PluginOptionsByType<TType> {
+    crosshairHighlight?: {
+      highlightDataset?: number;
+    };
+  }
+}
+
 // Chart.js plugin for crosshair and point highlight
 const CrosshairHighlightPlugin = {
   id: "crosshairHighlight",
-  afterDraw: (chart: any) => {
+  afterDraw: (chart: Chart & {_lastEvent: {x? : number, y? : number}}) => {
     const { ctx, chartArea, scales, tooltip } = chart;
     if (!chartArea) return;
 
@@ -31,48 +41,50 @@ const CrosshairHighlightPlugin = {
     const highlightDataset =
       chart.options.plugins?.crosshairHighlight?.highlightDataset ?? 0;
 
-    // Get mouse position relative to chart
-    const event = chart._active?.[0]?.element?.$context?.chart?.lastEvent || chart._lastEvent;
+    // Get mouse position relative to chart (safe, public API)
     let mouseX: number | null = null;
     let mouseY: number | null = null;
-    if (event && event.x !== undefined && event.y !== undefined) {
-      mouseX = event.x;
-      mouseY = event.y;
-    } else if (chart._lastEvent) {
-      mouseX = chart._lastEvent.x;
-      mouseY = chart._lastEvent.y;
+
+    const activeElements = chart.getActiveElements();
+    if (activeElements && activeElements.length > 0) {
+        // Try to get the position from the first active element
+        const element = activeElements[0].element;
+        // Chart.js public API: getProps
+        if (typeof element.getProps === "function") {
+            const { x, y } = element.getProps(["x", "y"], true);
+            mouseX = x;
+            mouseY = y;
+        }
     }
 
-    // Only highlight if mouse is inside chart area
-    // if (
-    //   mouseX == null ||
-    //   mouseY == null ||
-    //   mouseX < chartArea.left ||
-    //   mouseX > chartArea.right ||
-    //   mouseY < chartArea.top ||
-    //   mouseY > chartArea.bottom
-    // ) {
-    //   return;
-    // }
+    // Fallback: use not public chart._lastEvent if available
+    if ((mouseX === null || mouseY === null) && (chart)._lastEvent) {
+    const evt = (chart)._lastEvent;
+    if (evt.x !== undefined && evt.y !== undefined) {
+        mouseX = evt.x;
+        mouseY = evt.y;
+    }
+    }
 
     // Find the dataset to highlight
     const datasetMeta = chart.getDatasetMeta(highlightDataset);
     if (!datasetMeta || !datasetMeta.data || datasetMeta.data.length === 0) return;
 
     // Build a map from rounded x to point (cache on meta for perf)
-    if (!datasetMeta._xPointMap) {
-      datasetMeta._xPointMap = {};
+    const metaWithMap = datasetMeta as typeof datasetMeta & { _xPointMap?: Record<number, PointElement> };
+    if (!metaWithMap._xPointMap) {
+      metaWithMap._xPointMap = {};
       for (const point of datasetMeta.data) {
         const rx = Math.round(point.x);
-        datasetMeta._xPointMap[rx] = point;
+        metaWithMap._xPointMap[rx] = point as PointElement;
       }
     }
-    const xPointMap = datasetMeta._xPointMap;
+    const xPointMap = metaWithMap._xPointMap;
 
     // Find the closest point by rounded x
     let closestPoint = null;
     if (typeof mouseX === "number") {
-      let rx = Math.round(mouseX);
+      const rx = Math.round(mouseX);
       // Try up to 5 px away if not found
       for (let offset = 0; offset <= 5; ++offset) {
         if (xPointMap[rx + offset]) {
