@@ -9,6 +9,7 @@ import {
   Legend,
   Chart,
   ChartEvent,
+  ChartArea,
 } from "chart.js";
 import { Line } from "react-chartjs-2";
 import { after } from "node:test";
@@ -41,6 +42,7 @@ function datasetClickPlugin(setHighlightDataset: ((index: number) => void)) {
   afterEvent: (chart: Chart, args: { event: ChartEvent }) => {
     const { event } = args;
     if (event.type !== "click") {
+      //TODO: consider hover to semi highlight dataset
       return;
     }
 
@@ -97,84 +99,135 @@ function datasetClickPlugin(setHighlightDataset: ((index: number) => void)) {
     if (closestDatasetIdx !== null) {
       setHighlightDataset(closestDatasetIdx);
     }
+
+    // if the crosshairHighlight plugin is also used and the highlighted dataset changed, clear its last clicked point property 
+    // TODO: ideally this would move the point of interest to the new dataset if it has a point at the same x
+    const highlightDataset =
+        chart.options.plugins?.crosshairHighlight?.highlightDataset ?? 0;
+    if (closestDatasetIdx !== null && highlightDataset !== closestDatasetIdx) {
+        const highlightDatasetMeta = chart.getDatasetMeta(highlightDataset);
+        const metaWithPoint = highlightDatasetMeta as typeof highlightDatasetMeta & { _lastPointOfInterest?: {x: number, y: number} };
+        metaWithPoint._lastPointOfInterest = undefined;
+    }
+    
   },
 }
 };
 
 // Chart.js plugin for crosshair and point highlight using an overlay canvas
-const CrosshairHighlightPlugin = {
-  id: "crosshairHighlight",
-  afterInit: (chart: Chart & {_crosshairOverlayCanvas? : HTMLCanvasElement}) => {
-    // Create overlay canvas if not already present
-    if (!chart._crosshairOverlayCanvas) {
-      const mainCanvas = chart.canvas;
-      const overlay = document.createElement("canvas");
-      overlay.style.position = "absolute";
-      overlay.style.left = mainCanvas.offsetLeft + "px";
-      overlay.style.top = mainCanvas.offsetTop + "px";
-      overlay.width = mainCanvas.width;
-      overlay.height = mainCanvas.height;
-      overlay.style.pointerEvents = "none";
-      overlay.className = "chartjs-crosshair-overlay";
-      mainCanvas.parentNode?.appendChild(overlay);
-      chart._crosshairOverlayCanvas = overlay;
-    }
-  },
-  afterEvent: (chart: Chart  & {_crosshairOverlayCanvas? : HTMLCanvasElement}, args: { event: ChartEvent }) => {
-    const overlay: HTMLCanvasElement | undefined = chart._crosshairOverlayCanvas;
-    if (!overlay) return;
-    const ctx = overlay.getContext("2d");
-    if (!ctx) return;
-    const { chartArea } = chart;
-    const { event } = args;
-    if (!event || !event.x || !event.y) {
+function crosshairHighlightPlugin(setPointOfInterest?: ((point : {x: number, y: number} | null) => void)) {
+  return {
+    id: "crosshairHighlight",
+    afterInit: (chart: Chart & {_crosshairOverlayCanvas? : HTMLCanvasElement}) => {
+      // Create overlay canvas if not already present
+      if (!chart._crosshairOverlayCanvas) {
+        const mainCanvas = chart.canvas;
+        const overlay = document.createElement("canvas");
+        overlay.style.position = "absolute";
+        overlay.style.left = mainCanvas.offsetLeft + "px";
+        overlay.style.top = mainCanvas.offsetTop + "px";
+        overlay.width = mainCanvas.width;
+        overlay.height = mainCanvas.height;
+        overlay.style.pointerEvents = "none";
+        overlay.className = "chartjs-crosshair-overlay";
+        mainCanvas.parentNode?.appendChild(overlay);
+        chart._crosshairOverlayCanvas = overlay;
+      }
+    },
+    afterEvent: (chart: Chart  & {_crosshairOverlayCanvas? : HTMLCanvasElement}, args: { event: ChartEvent }) => {
+      const overlay: HTMLCanvasElement | undefined = chart._crosshairOverlayCanvas;
+      if (!overlay) return;
+      const ctx = overlay.getContext("2d");
+      if (!ctx) return;
+      const { chartArea } = chart;
+      const { event } = args;
+      if (!event || !event.x || !event.y) {
+        ctx.clearRect(0, 0, overlay.width, overlay.height);
+        return;
+      }
+
+      const { x: mouseX, y: mouseY } = getRelativePosition(event, chart);
+
+      // Clear overlay before drawing new crosshairs to avoid artifacts.
       ctx.clearRect(0, 0, overlay.width, overlay.height);
-      return;
-    }
 
-    const { x: mouseX, y: mouseY } = getRelativePosition(event, chart);
+      // Find the highlighted dataset index (or default to 0)
+      const highlightDataset =
+        chart.options.plugins?.crosshairHighlight?.highlightDataset ?? 0;
 
-    // Clear overlay before drawing new crosshairs to avoid artifacts.
-    ctx.clearRect(0, 0, overlay.width, overlay.height);
+      // Find the dataset to highlight
+      const datasetMeta = chart.getDatasetMeta(highlightDataset);
+      if (!datasetMeta || !datasetMeta.data || datasetMeta.data.length === 0) return;
 
-    // Find the highlighted dataset index (or default to 0)
-    const highlightDataset =
-      chart.options.plugins?.crosshairHighlight?.highlightDataset ?? 0;
-
-    // Find the dataset to highlight
-    const datasetMeta = chart.getDatasetMeta(highlightDataset);
-    if (!datasetMeta || !datasetMeta.data || datasetMeta.data.length === 0) return;
-
-    // Build a map from rounded x to point (cache on meta for perf)
-    const metaWithMap = datasetMeta as typeof datasetMeta & { _xPointMap?: Record<number, PointElement> };
-    if (!metaWithMap._xPointMap) {
-      metaWithMap._xPointMap = {};
-      for (const point of datasetMeta.data) {
-        const rx = Math.round(point.x);
-        metaWithMap._xPointMap[rx] = point as PointElement;
-      }
-    }
-    const xPointMap = metaWithMap._xPointMap;
-
-    // Find the closest point by rounded x
-    let closestPoint = null;
-    if (typeof mouseX === "number") {
-      const rx = Math.round(mouseX);
-      // Try up to 5 px away if not found
-      for (let offset = 0; offset <= 5; ++offset) {
-        if (xPointMap[rx + offset]) {
-          closestPoint = xPointMap[rx + offset];
-          break;
-        }
-        if (xPointMap[rx - offset]) {
-          closestPoint = xPointMap[rx - offset];
-          break;
+      // Build a map from rounded x to point (cache on meta for perf)
+      const metaWithMap = datasetMeta as typeof datasetMeta & { _xPointMap?: Record<number, PointElement> };
+      if (!metaWithMap._xPointMap) {
+        metaWithMap._xPointMap = {};
+        for (const point of datasetMeta.data) {
+          const rx = Math.round(point.x);
+          metaWithMap._xPointMap[rx] = point as PointElement;
         }
       }
-    }
-    if (!closestPoint) return;
+      const xPointMap = metaWithMap._xPointMap;
 
-    // Highlight the point
+      // Find the closest point by rounded x
+      let closestPoint = null;
+      if (typeof mouseX === "number") {
+        const rx = Math.round(mouseX);
+        // Try up to 5 px away if not found
+        for (let offset = 0; offset <= 5; ++offset) {
+          if (xPointMap[rx + offset]) {
+            closestPoint = xPointMap[rx + offset];
+            break;
+          }
+          if (xPointMap[rx - offset]) {
+            closestPoint = xPointMap[rx - offset];
+            break;
+          }
+        }
+      }
+      if (!closestPoint) return;
+
+      const metaWithPoint = datasetMeta as typeof datasetMeta & { _lastPointOfInterest?: {x: number, y: number} };
+      if (event.type === "click") {
+        metaWithPoint._lastPointOfInterest = {x: closestPoint.x, y: closestPoint.y};
+        if (setPointOfInterest) {
+          setPointOfInterest({x: closestPoint.x, y: closestPoint.y});
+        }
+      } else if (!metaWithPoint._lastPointOfInterest) {
+        // clear point of interest if not click and no last clicked point
+        if (setPointOfInterest) {
+          setPointOfInterest(null);
+        }
+      }
+
+      // Highlight the point
+      drawCrosshairs(ctx, closestPoint, chartArea);
+      // Also highlight last clicked point if any
+      if (metaWithPoint._lastPointOfInterest) {
+        const lastPoint = metaWithPoint._lastPointOfInterest;
+        drawCrosshairs(ctx, {x: lastPoint.x, y: lastPoint.y} as PointElement, chartArea);
+      }
+    },
+    afterResize: (chart: Chart & {_crosshairOverlayCanvas? : HTMLCanvasElement}) => {
+      // Resize overlay canvas to match chart
+      const overlay: HTMLCanvasElement | undefined = chart._crosshairOverlayCanvas;
+      if (overlay) {
+        overlay.width = chart.width;
+        overlay.height = chart.height;
+      }
+    },
+    beforeDestroy: (chart: Chart & {_crosshairOverlayCanvas? : HTMLCanvasElement}) => {
+      // Remove overlay canvas
+      const overlay: HTMLCanvasElement | undefined = chart._crosshairOverlayCanvas;
+      if (overlay && overlay.parentNode) {
+        overlay.parentNode.removeChild(overlay);
+      }
+      chart._crosshairOverlayCanvas = undefined;
+    },
+  }
+
+  function drawCrosshairs(ctx: CanvasRenderingContext2D, closestPoint: PointElement, chartArea : ChartArea) {
     ctx.save();
     ctx.beginPath();
     ctx.arc(closestPoint.x, closestPoint.y, 6, 0, 2 * Math.PI);
@@ -200,29 +253,8 @@ const CrosshairHighlightPlugin = {
     ctx.lineTo(closestPoint.x, closestPoint.y);
     ctx.stroke();
     ctx.restore();
-  },
-  afterResize: (chart: Chart & {_crosshairOverlayCanvas? : HTMLCanvasElement}) => {
-    // Resize overlay canvas to match chart
-    const overlay: HTMLCanvasElement | undefined = chart._crosshairOverlayCanvas;
-    if (overlay) {
-      overlay.width = chart.width;
-      overlay.height = chart.height;
-    }
-  },
-  beforeDestroy: (chart: Chart & {_crosshairOverlayCanvas? : HTMLCanvasElement}) => {
-    // Remove overlay canvas
-    const overlay: HTMLCanvasElement | undefined = chart._crosshairOverlayCanvas;
-    if (overlay && overlay.parentNode) {
-      overlay.parentNode.removeChild(overlay);
-    }
-    chart._crosshairOverlayCanvas = undefined;
-  },
+  }
 };
-
-// Register the plugins globally
-ChartJS.register(
-  CrosshairHighlightPlugin,
-);
 
 export interface FunctionValueLineChartProps {
   /** Array of function values: [f(1), f(2), f(3), ...] OR array of the mentioned*/
@@ -232,7 +264,8 @@ export interface FunctionValueLineChartProps {
   /** Optional: dataset label */
   label?: string;
   highlightDataset?: number; // index of dataset to highlight
-  setHighlightDataset?: (index: number) => void; // callback to set highlighted dataset
+  setHighlightDataset?: (index: number) => void; 
+  setPointOfInterest?: (point: {x: number, y: number} | null) => void; 
 }
 
 const FunctionValueLineChart: React.FC<FunctionValueLineChartProps> = ({
@@ -240,13 +273,15 @@ const FunctionValueLineChart: React.FC<FunctionValueLineChartProps> = ({
     labels,
     label = "f(x)",
     highlightDataset,
-    setHighlightDataset
+    setHighlightDataset,
+    setPointOfInterest,
 }) => {
     // Handle both single and multiple datasets
     const isMultipleDatasets = Array.isArray(data[0]);
 
     let inlinePlugins = [];
     if (setHighlightDataset) {
+      inlinePlugins.push(crosshairHighlightPlugin(setPointOfInterest)); // order matters
       inlinePlugins.push(datasetClickPlugin(setHighlightDataset));
     }
 
