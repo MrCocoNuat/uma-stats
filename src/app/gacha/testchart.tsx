@@ -42,75 +42,83 @@ function datasetClickPlugin(setHighlightDataset: ((index: number) => void)) {
     afterEvent: (chart: Chart, args: { event: ChartEvent }) => {
       const { event } = args;
       if (event.type !== "click") {
-        //TODO: consider hover to semi highlight dataset
         return;
       }
 
       const { x: mouseX, y: mouseY } = getRelativePosition(event, chart);
 
+      const datasetCount = chart.data.datasets.length;
       const datasetMetas = chart.data.datasets.map((_, idx) => chart.getDatasetMeta(idx));
-    // Build xPointMaps for all datasets directly
-    const allXPointMaps: Record<number, PointElement>[] = datasetMetas.map((meta) => {
-      const xPointMap: Record<number, PointElement> = {};
-      for (const point of meta.data) {
-      const rx = Math.round(point.x);
-      xPointMap[rx] = point as PointElement;
-      }
-      return xPointMap;
-    });
 
-    // Find the closest point among all datasets at the clicked x
+      // Get currently highlighted dataset index
+      const highlightDataset = chart.options.plugins?.crosshairHighlight?.highlightDataset ?? 0;
+
+      let highlightDatasetWithinThreshold = false;
       let closestDatasetIdx: number | null = null;
       let closestYDist = Number.POSITIVE_INFINITY;
 
-    console.debug("Mouse position:", mouseX, mouseY);
       if (typeof mouseX === "number" && typeof mouseY === "number") {
-      const rx = Math.round(mouseX);
+        const rx = Math.round(mouseX);
 
-      allXPointMaps.forEach((xPointMap, idx) => {
-        let point: PointElement | undefined;
-        // Try up to 5 px away if not found
-        for (let offset = 0; offset <= 5; ++offset) {
-          if (xPointMap[rx + offset]) {
-          point = xPointMap[rx + offset];
-          break;
+        for (let idx = 0; idx < datasetCount; ++idx) {
+          const meta = datasetMetas[idx];
+          // Build xPointMap for this dataset
+          const xPointMap: Record<number, PointElement> = {};
+          for (const point of meta.data) {
+            const px = Math.round(point.x);
+            xPointMap[px] = point as PointElement;
           }
-          if (xPointMap[rx - offset]) {
-          point = xPointMap[rx - offset];
-          break;
+
+          // Find closest point by x (try up to 5 px away)
+          let point: PointElement | undefined;
+          for (let offset = 0; offset <= 5; ++offset) {
+            if (xPointMap[rx + offset]) {
+              point = xPointMap[rx + offset];
+              break;
+            }
+            if (xPointMap[rx - offset]) {
+              point = xPointMap[rx - offset];
+              break;
             }
           }
-        if (point) {
-          const dist = Math.abs(point.y - mouseY);
-          if (dist < closestYDist && dist <= DATASET_CLICK_Y_THRESHOLD) {
-          closestYDist = dist;
+
+          if (point) {
+            const dist = Math.abs(point.y - mouseY);
+
+            // Check threshold for highlighted dataset
+            if (idx === highlightDataset && dist <= DATASET_CLICK_Y_THRESHOLD) {
+              highlightDatasetWithinThreshold = true;
+            }
+
+            // Track closest dataset within threshold (but not highlighted)
+            if (dist < closestYDist && dist <= DATASET_CLICK_Y_THRESHOLD) {
+              closestYDist = dist;
               closestDatasetIdx = idx;
             }
           }
-        });
-      
-    }
-
-    console.debug("Closest dataset index:", closestDatasetIdx);
-
-    console.debug("setHighlightedDataset function:", setHighlightDataset);
-    if (!setHighlightDataset ) return;
-
-      if (closestDatasetIdx !== null) {
-        setHighlightDataset(closestDatasetIdx);
+        }
       }
 
-      // if the crosshairHighlight plugin is also used and the highlighted dataset changed, clear its last clicked point property 
-      // TODO: ideally this would move the point of interest to the new dataset if it has a point at the same x
-      const highlightDataset = chart.options.plugins?.crosshairHighlight?.highlightDataset ?? 0;
-      if (closestDatasetIdx !== null && highlightDataset !== closestDatasetIdx) {
+      // If click is within threshold of highlighted dataset, do nothing
+      if (highlightDatasetWithinThreshold) {
+        return;
+      }
+
+      if (!setHighlightDataset) return;
+
+      if (
+        closestDatasetIdx !== null &&
+        closestDatasetIdx !== highlightDataset
+      ) {
+        setHighlightDataset(closestDatasetIdx);
+
+        // Clear last clicked point for previous highlighted dataset
         const highlightDatasetMeta = chart.getDatasetMeta(highlightDataset);
         const metaWithPoint = highlightDatasetMeta as typeof highlightDatasetMeta & { _lastPointOfInterest?: {x: number, y: number} };
         metaWithPoint._lastPointOfInterest = undefined;
       }
-    
     },
-}
+  }
 };
 
 // Chart.js plugin for crosshair and point highlight using an overlay canvas
