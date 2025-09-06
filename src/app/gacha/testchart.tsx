@@ -284,48 +284,54 @@ export interface FunctionValueLineChartProps {
   setPointOfInterest?: (point: {x: number, y: number} | null) => void; 
 }
 
-const FunctionValueLineChart: React.FC<FunctionValueLineChartProps> = ({
+function FunctionValueLineChart(props: FunctionValueLineChartProps) {
+  const {
     data,
     labels,
     label = "f(x)",
     highlightDataset,
     setHighlightDataset,
     setPointOfInterest,
-}) => {
-    // Handle both single and multiple datasets
-    const isMultipleDatasets = Array.isArray(data[0]);
+  } = props;
 
-    let inlinePlugins = [];
-    if (setHighlightDataset) {
-      inlinePlugins.push(crosshairHighlightPlugin(setPointOfInterest)); // order matters
-      inlinePlugins.push(datasetClickPlugin(setHighlightDataset));
-    }
+  // Handle both single and multiple datasets
+  const isMultipleDatasets = Array.isArray(data[0]);
 
-    // If no labels provided, use [1, 2, 3, ...]
-    const maxDatasetLength = isMultipleDatasets? (data as number[][]).reduce((max, arr) => Math.max(max, arr.length), 0) : (data as number[]).length;
-    const chartLabels =
-        labels && labels.length === maxDatasetLength
-            ? labels
-            : Array.from({ length: maxDatasetLength }, (_, i) => i + 1);
+  let inlinePlugins = [];
+  if (setHighlightDataset) {
+    inlinePlugins.push(crosshairHighlightPlugin(setPointOfInterest)); // order matters
+    inlinePlugins.push(datasetClickPlugin(setHighlightDataset));
+  }
 
-    const datasets = isMultipleDatasets
-        ? (data as number[][]).map((dataset, idx) => ({
-            label: label+idx,
-            data: dataset,
-            radius:0,
-            borderColor: idx === highlightDataset ? "red":"rgba(80, 57, 57, 1)",
-            order: idx === highlightDataset ? 1 : 99, // bring highlighted dataset to front
-            }))
-        : [{
-                label,
-                data,
-                radius:0,
-                borderColor: "red"
-            }];
+  // If no labels provided, use [1, 2, 3, ...]
+  const maxDatasetLength = isMultipleDatasets
+    ? (data as number[][]).reduce((max, arr) => Math.max(max, arr.length), 0)
+    : (data as number[]).length;
+  const chartLabels =
+    labels && labels.length === maxDatasetLength
+      ? labels
+      : Array.from({ length: maxDatasetLength }, (_, i) => i + 1);
+
+  const datasets = isMultipleDatasets
+    ? (data as number[][]).map((dataset, idx) => ({
+        label: label + idx,
+        data: dataset,
+        radius: 0,
+        borderColor: idx === highlightDataset ? "red" : "rgba(80, 57, 57, 1)",
+        order: idx === highlightDataset ? 1 : 99, // bring highlighted dataset to front
+      }))
+    : [
+        {
+          label,
+          data,
+          radius: 0,
+          borderColor: "red",
+        },
+      ];
 
   const chartData = {
     labels: chartLabels,
-    datasets: datasets 
+    datasets: datasets,
   };
 
   const options = {
@@ -342,7 +348,7 @@ const FunctionValueLineChart: React.FC<FunctionValueLineChartProps> = ({
       },
       crosshairHighlight: {
         highlightDataset: highlightDataset ?? 0,
-      }
+      },
     },
     scales: {
       x: {
@@ -365,6 +371,6 @@ const FunctionValueLineChart: React.FC<FunctionValueLineChartProps> = ({
       <Line data={chartData} options={options} plugins={inlinePlugins} />
     </div>
   );
-};
+}
 
 export default FunctionValueLineChart;
