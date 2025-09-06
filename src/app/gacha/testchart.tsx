@@ -362,6 +362,8 @@ function FunctionValueLineChart(props: FunctionValueLineChartProps) {
           display: true,
           text: label,
         },
+        min: 0,
+        max: 1,
       },
     },
   };

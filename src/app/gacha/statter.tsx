@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState, useEffect, useMemo, useRef } from "react";
-import { PullRates, STATTER_TYPE } from "./types";
+import { PULL_TYPE, PullRates, RARITY, STATTER_TYPE } from "./types";
 import { negativeBinomialCdf } from "./stats";
 import FunctionValueLineChart from "./testchart";
 
@@ -75,7 +75,7 @@ function NPullsStatter({pullRates}: {pullRates: PullRates}){
     const ssrFocusProb = 0.0075;
 
 
-    return <div>NPullsStatter</div>
+    return <div>DEPRECATED</div>
 }
 
 
@@ -90,7 +90,7 @@ function NHitsStatter({pullRates, setPointOfInterest}: {pullRates: PullRates, se
 
     // using statistics.js, create a NB distribution for SSR_FOCUS and SR_FOCUS rarities based on the pull rates
     // Example: SSR_FOCUS and SR_FOCUS are keys in pullRates with probability values
-    const ssrFocusProb = 0.0075;
+    const ssrFocusProb = pullRates[PULL_TYPE.ONE][0][RARITY.SSR_FOCUS];
     const srFocusProb = 0.0225;
 
     // construct the negative binomial distribution for number of pulls to get r hits
