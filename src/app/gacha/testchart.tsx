@@ -190,9 +190,12 @@ function crosshairHighlightPlugin(setPointOfInterest?: ((point : {x: number, y: 
 
       const metaWithPoint = datasetMeta as typeof datasetMeta & { _lastPointOfInterest?: {x: number, y: number} };
       if (event.type === "click") {
+
         metaWithPoint._lastPointOfInterest = {x: closestPoint.x, y: closestPoint.y};
         if (setPointOfInterest) {
-          setPointOfInterest({x: closestPoint.x, y: closestPoint.y});
+          const xValue = chart.scales.x.getValueForPixel(mouseX) as number;
+          const yValue = chart.scales.y.getValueForPixel(mouseY)  as number; 
+          setPointOfInterest({x: xValue, y: yValue});
         }
       } else if (!metaWithPoint._lastPointOfInterest) {
         // clear point of interest if not click and no last clicked point

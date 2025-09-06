@@ -14,6 +14,7 @@ const MAX_PULLS = HITS_PER_SPARK*MAX_HITS; // 5 sparks is always enough, but may
 export default function GachaStatter({pullRates} : {pullRates: PullRates}){
     // use state two modes, type is STATTER_TYPE
     const [mode, setMode] = useState<STATTER_TYPE>(STATTER_TYPE.N_HITS);
+    const [pointOfInterest, setPointOfInterest] = useState<{x: number, y: number} | null>(null);
 
     return (
         <div className="p-4 border rounded-lg shadow-md">
@@ -26,9 +27,10 @@ export default function GachaStatter({pullRates} : {pullRates: PullRates}){
                     <p>You have selected to view statistics by set Number of Pulls.</p>
                 )}
             </div>
+            <text>Point of Interest: {pointOfInterest ? `(${pointOfInterest.x}, ${pointOfInterest.y.toFixed(4)})` : "None"}</text>
             {mode === STATTER_TYPE.N_PULLS ?
                 <NPullsStatter pullRates={pullRates}/> :
-                <NHitsStatter pullRates={pullRates}/>
+                <NHitsStatter pullRates={pullRates} setPointOfInterest={setPointOfInterest}/>
             }
         </div>
     );
@@ -38,17 +40,24 @@ export default function GachaStatter({pullRates} : {pullRates: PullRates}){
 // shows, given number of pulls, the distribution of number of hits of each rarity
 // line graph: x axis = number of pulls, y axis = probability, lines = categorical of >= # hits
 
+// oh man, it is the same distribution altogether
 
 //specs:
 // 
 function NPullsStatter({pullRates}: {pullRates: PullRates}){
+
+    // using statistics.js, create a Bin distribution for SSR_FOCUS and SR_FOCUS rarities based on the pull rates 
+    // Example: SSR_FOCUS and SR_FOCUS are keys in pullRates with probability values
+    const ssrFocusProb = 0.0075;
+
+
     return <div>NPullsStatter</div>
 }
 
 
-// shows, given number of hits, the C distribution of number of pulls needed to get that many hits
+// shows, given number of hits, the cumdistribution of number of pulls needed to get that many hits
 // line graph: x axis = number of hits, y axis = probability
-function NHitsStatter({pullRates}: {pullRates: PullRates}){
+function NHitsStatter({pullRates, setPointOfInterest}: {pullRates: PullRates, setPointOfInterest: (point : {x: number, y: number} | null) => void}){
     const [desiredBreaks, setDesiredBreaks] = useState(MAX_BREAKS);
     // A slider to select desired hits, between 0 and MAX_BREAKS
     const handleSliderChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -61,6 +70,7 @@ function NHitsStatter({pullRates}: {pullRates: PullRates}){
     const srFocusProb = 0.0225;
 
     // construct the negative binomial distribution for number of pulls to get r hits
+    // TODO: allow specifying sparks
     const distributions = useMemo(() => 
         Array.from({length: 5}, (_, r) => 
             negativeBinomialCdf(r+1, ssrFocusProb, MAX_PULLS)
@@ -81,7 +91,7 @@ function NHitsStatter({pullRates}: {pullRates: PullRates}){
             onChange={handleSliderChange}
             className="w-full"
         />
-        <FunctionValueLineChart data={distributions} highlightDataset={desiredBreaks} setHighlightDataset={i => {console.debug(i); if (typeof i === "number") setDesiredBreaks(i);}}/>
+        <FunctionValueLineChart data={distributions} highlightDataset={desiredBreaks} setHighlightDataset={i => {console.debug(i); if (typeof i === "number") setDesiredBreaks(i);}} setPointOfInterest={setPointOfInterest}/>
     </div>
 }
 
