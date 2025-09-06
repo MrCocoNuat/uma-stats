@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo, useRef } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { PullRates, STATTER_TYPE } from "./types";
 import { negativeBinomialCdf } from "./stats";
 import FunctionValueLineChart from "./testchart";
@@ -10,24 +10,34 @@ const MAX_HITS = 5;
 const HITS_PER_SPARK = 200; 
 const MAX_PULLS = HITS_PER_SPARK*MAX_HITS; // 5 sparks is always enough, but maybe user does not want to spark
 
+function PointOfInterestDisplay({ setHandlePoi: setHandlePoi }: { setHandlePoi: (cb: (point: {x: number, y: number} | null) => void) => void }) {
+    const [pointOfInterest, setPointOfInterest] = useState<{x: number, y: number} | null>(null);
+    // Register the setter with the parent so the chart can update it
+    useEffect(() => {
+        setHandlePoi(setPointOfInterest);
+    }, [setHandlePoi]);
+    return (
+        <text>Point of Interest: {pointOfInterest ? `(${pointOfInterest.x}, ${pointOfInterest.y.toFixed(6)})` : "None"}</text>
+    );
+}
+
+const MemoizedFunctionValueLineChart = React.memo(FunctionValueLineChart);
 
 export default function GachaStatter({pullRates} : {pullRates: PullRates}){
     // use state two modes, type is STATTER_TYPE
     const [mode, setMode] = useState<STATTER_TYPE>(STATTER_TYPE.N_HITS);
-    const [pointOfInterest, setPointOfInterest] = useState<{x: number, y: number} | null>(null);
-    const previousPointOfInterestRef = useRef<{x: number, y: number} | null>(null);
-    function setPointOfInterestIfChanged(newPoint: {x: number, y: number} | null) {
-            const lastPoint = previousPointOfInterestRef.current;
-            if (
-                lastPoint === newPoint ||
-                (lastPoint && newPoint && lastPoint.x === newPoint.x && lastPoint.y === newPoint.y)
-            ) {
-                return;
-            }
-            previousPointOfInterestRef.current = newPoint;
-            setPointOfInterest(newPoint);
-        }
 
+    // callback registered by child chart to receive point of interest updates -- performance optimization
+    // Store the setter for point of interest in a ref
+    const handlePoiRef = useRef<((point: {x: number, y: number} | null) => void) | null>(null);
+    // and allow child display component to set it
+    const setHandlePoi = (setter: (point: {x: number, y: number} | null) => void) => {
+        handlePoiRef.current = setter;
+    };
+    // Pass a callback to the chart that will call the latest setter
+    const handleNewPoi = (point: {x: number, y: number} | null) => {
+        if (handlePoiRef.current) handlePoiRef.current(point);
+    };
     return (
         <div className="p-4 border rounded-lg shadow-md">
             <h2 className="text-2xl font-bold mb-4">Gacha Statistics</h2>
@@ -39,10 +49,10 @@ export default function GachaStatter({pullRates} : {pullRates: PullRates}){
                     <p>You have selected to view statistics by set Number of Pulls.</p>
                 )}
             </div>
-            <text>Point of Interest: {pointOfInterest ? `(${pointOfInterest.x}, ${pointOfInterest.y.toFixed(6)})` : "None"}</text>
+            <PointOfInterestDisplay setHandlePoi={setHandlePoi} />
             {mode === STATTER_TYPE.N_PULLS ?
                 <NPullsStatter pullRates={pullRates}/> :
-                <NHitsStatter pullRates={pullRates} setPointOfInterest={setPointOfInterestIfChanged}/>
+                <NHitsStatter pullRates={pullRates} setPointOfInterest={handleNewPoi}/>
             }
         </div>
     );
@@ -107,7 +117,7 @@ function NHitsStatter({pullRates, setPointOfInterest}: {pullRates: PullRates, se
             onChange={handleSliderChange}
             className="w-full"
         />
-        <FunctionValueLineChart data={distributions} highlightDataset={desiredBreaks} setHighlightDataset={i => {console.debug(i); if (typeof i === "number") setDesiredBreaks(i);}} setPointOfInterest={setPointOfInterest}/>
+        <MemoizedFunctionValueLineChart data={distributions} highlightDataset={desiredBreaks} setHighlightDataset={i => {console.debug(i); if (typeof i === "number") setDesiredBreaks(i);}} setPointOfInterest={setPointOfInterest}/>
     </div>
 }
 
