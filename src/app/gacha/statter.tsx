@@ -27,7 +27,7 @@ export default function GachaStatter({pullRates} : {pullRates: PullRates}){
                     <p>You have selected to view statistics by set Number of Pulls.</p>
                 )}
             </div>
-            <text>Point of Interest: {pointOfInterest ? `(${pointOfInterest.x}, ${pointOfInterest.y.toFixed(4)})` : "None"}</text>
+            <text>Point of Interest: {pointOfInterest ? `(${pointOfInterest.x}, ${pointOfInterest.y.toFixed(6)})` : "None"}</text>
             {mode === STATTER_TYPE.N_PULLS ?
                 <NPullsStatter pullRates={pullRates}/> :
                 <NHitsStatter pullRates={pullRates} setPointOfInterest={setPointOfInterest}/>
@@ -40,7 +40,9 @@ export default function GachaStatter({pullRates} : {pullRates: PullRates}){
 // shows, given number of pulls, the distribution of number of hits of each rarity
 // line graph: x axis = number of pulls, y axis = probability, lines = categorical of >= # hits
 
-// oh man, it is the same distribution altogether
+// this is the same distribution eventually
+// p(>= k hits in n pulls) = p(<= n-k failures before k successes in n trials) = I_p(n-k+1, k) = 1 - I_(1-p)(k, n-k+1)
+// so no need to compute this at all
 
 //specs:
 // 
@@ -72,9 +74,11 @@ function NHitsStatter({pullRates, setPointOfInterest}: {pullRates: PullRates, se
     // construct the negative binomial distribution for number of pulls to get r hits
     // TODO: allow specifying sparks
     const distributions = useMemo(() => 
-        Array.from({length: 5}, (_, r) => 
-            negativeBinomialCdf(r+1, ssrFocusProb, MAX_PULLS)
-        )
+        Array.from({length: 5}, (_, r) => {
+            const cdf = negativeBinomialCdf(r+1, ssrFocusProb, MAX_PULLS);
+            // Prepend r+1 zeros to represent the impossible pulls before achieving enough hits
+            return Array(r+1).fill(0).concat(cdf);
+        })
     , [ssrFocusProb]);
     
     return <div>

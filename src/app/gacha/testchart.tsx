@@ -38,17 +38,17 @@ const DATASET_CLICK_Y_THRESHOLD =25; // pixels
 
 function datasetClickPlugin(setHighlightDataset: ((index: number) => void)) {
   return {
-  id: "datasetClick",
-  afterEvent: (chart: Chart, args: { event: ChartEvent }) => {
-    const { event } = args;
-    if (event.type !== "click") {
-      //TODO: consider hover to semi highlight dataset
-      return;
-    }
+    id: "datasetClick",
+    afterEvent: (chart: Chart, args: { event: ChartEvent }) => {
+      const { event } = args;
+      if (event.type !== "click") {
+        //TODO: consider hover to semi highlight dataset
+        return;
+      }
 
-    const { x: mouseX, y: mouseY } = getRelativePosition(event, chart);
+      const { x: mouseX, y: mouseY } = getRelativePosition(event, chart);
 
-    const datasetMetas = chart.data.datasets.map((_, idx) => chart.getDatasetMeta(idx));
+      const datasetMetas = chart.data.datasets.map((_, idx) => chart.getDatasetMeta(idx));
     // Build xPointMaps for all datasets directly
     const allXPointMaps: Record<number, PointElement>[] = datasetMetas.map((meta) => {
       const xPointMap: Record<number, PointElement> = {};
@@ -60,11 +60,11 @@ function datasetClickPlugin(setHighlightDataset: ((index: number) => void)) {
     });
 
     // Find the closest point among all datasets at the clicked x
-    let closestDatasetIdx: number | null = null;
-    let closestYDist = Number.POSITIVE_INFINITY;
+      let closestDatasetIdx: number | null = null;
+      let closestYDist = Number.POSITIVE_INFINITY;
 
     console.debug("Mouse position:", mouseX, mouseY);
-    if (typeof mouseX === "number" && typeof mouseY === "number") {
+      if (typeof mouseX === "number" && typeof mouseY === "number") {
       const rx = Math.round(mouseX);
 
       allXPointMaps.forEach((xPointMap, idx) => {
@@ -78,16 +78,16 @@ function datasetClickPlugin(setHighlightDataset: ((index: number) => void)) {
           if (xPointMap[rx - offset]) {
           point = xPointMap[rx - offset];
           break;
+            }
           }
-        }
         if (point) {
           const dist = Math.abs(point.y - mouseY);
           if (dist < closestYDist && dist <= DATASET_CLICK_Y_THRESHOLD) {
           closestYDist = dist;
-          closestDatasetIdx = idx;
+              closestDatasetIdx = idx;
+            }
           }
-        }
-      });
+        });
       
     }
 
@@ -96,21 +96,20 @@ function datasetClickPlugin(setHighlightDataset: ((index: number) => void)) {
     console.debug("setHighlightedDataset function:", setHighlightDataset);
     if (!setHighlightDataset ) return;
 
-    if (closestDatasetIdx !== null) {
-      setHighlightDataset(closestDatasetIdx);
-    }
+      if (closestDatasetIdx !== null) {
+        setHighlightDataset(closestDatasetIdx);
+      }
 
-    // if the crosshairHighlight plugin is also used and the highlighted dataset changed, clear its last clicked point property 
-    // TODO: ideally this would move the point of interest to the new dataset if it has a point at the same x
-    const highlightDataset =
-        chart.options.plugins?.crosshairHighlight?.highlightDataset ?? 0;
-    if (closestDatasetIdx !== null && highlightDataset !== closestDatasetIdx) {
+      // if the crosshairHighlight plugin is also used and the highlighted dataset changed, clear its last clicked point property 
+      // TODO: ideally this would move the point of interest to the new dataset if it has a point at the same x
+      const highlightDataset = chart.options.plugins?.crosshairHighlight?.highlightDataset ?? 0;
+      if (closestDatasetIdx !== null && highlightDataset !== closestDatasetIdx) {
         const highlightDatasetMeta = chart.getDatasetMeta(highlightDataset);
         const metaWithPoint = highlightDatasetMeta as typeof highlightDatasetMeta & { _lastPointOfInterest?: {x: number, y: number} };
         metaWithPoint._lastPointOfInterest = undefined;
-    }
+      }
     
-  },
+    },
 }
 };
 
@@ -193,8 +192,8 @@ function crosshairHighlightPlugin(setPointOfInterest?: ((point : {x: number, y: 
 
         metaWithPoint._lastPointOfInterest = {x: closestPoint.x, y: closestPoint.y};
         if (setPointOfInterest) {
-          const xValue = chart.scales.x.getValueForPixel(mouseX) as number;
-          const yValue = chart.scales.y.getValueForPixel(mouseY)  as number; 
+          const xValue = chart.scales.x.getValueForPixel(closestPoint.x) as number;
+          const yValue = chart.scales.y.getValueForPixel(closestPoint.y)  as number; 
           setPointOfInterest({x: xValue, y: yValue});
         }
       } else if (!metaWithPoint._lastPointOfInterest) {
