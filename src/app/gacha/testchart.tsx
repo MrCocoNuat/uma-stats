@@ -297,7 +297,7 @@ function FunctionValueLineChart(props: FunctionValueLineChartProps) {
   // Handle both single and multiple datasets
   const isMultipleDatasets = Array.isArray(data[0]);
 
-  let inlinePlugins = [];
+  const inlinePlugins = [];
   if (setHighlightDataset) {
     inlinePlugins.push(crosshairHighlightPlugin(setPointOfInterest)); // order matters
     inlinePlugins.push(datasetClickPlugin(setHighlightDataset));
