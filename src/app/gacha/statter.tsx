@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { PullRates, STATTER_TYPE } from "./types";
 import { negativeBinomialCdf } from "./stats";
 import FunctionValueLineChart from "./testchart";
@@ -15,6 +15,18 @@ export default function GachaStatter({pullRates} : {pullRates: PullRates}){
     // use state two modes, type is STATTER_TYPE
     const [mode, setMode] = useState<STATTER_TYPE>(STATTER_TYPE.N_HITS);
     const [pointOfInterest, setPointOfInterest] = useState<{x: number, y: number} | null>(null);
+    const previousPointOfInterestRef = useRef<{x: number, y: number} | null>(null);
+    function setPointOfInterestIfChanged(newPoint: {x: number, y: number} | null) {
+            const lastPoint = previousPointOfInterestRef.current;
+            if (
+                lastPoint === newPoint ||
+                (lastPoint && newPoint && lastPoint.x === newPoint.x && lastPoint.y === newPoint.y)
+            ) {
+                return;
+            }
+            previousPointOfInterestRef.current = newPoint;
+            setPointOfInterest(newPoint);
+        }
 
     return (
         <div className="p-4 border rounded-lg shadow-md">
@@ -30,7 +42,7 @@ export default function GachaStatter({pullRates} : {pullRates: PullRates}){
             <text>Point of Interest: {pointOfInterest ? `(${pointOfInterest.x}, ${pointOfInterest.y.toFixed(6)})` : "None"}</text>
             {mode === STATTER_TYPE.N_PULLS ?
                 <NPullsStatter pullRates={pullRates}/> :
-                <NHitsStatter pullRates={pullRates} setPointOfInterest={setPointOfInterest}/>
+                <NHitsStatter pullRates={pullRates} setPointOfInterest={setPointOfInterestIfChanged}/>
             }
         </div>
     );

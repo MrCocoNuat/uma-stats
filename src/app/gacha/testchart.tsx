@@ -196,13 +196,19 @@ function crosshairHighlightPlugin(setPointOfInterest?: ((point : {x: number, y: 
       if (!closestPoint) return;
 
       const metaWithPoint = datasetMeta as typeof datasetMeta & { _lastPointOfInterest?: {x: number, y: number} };
-      if (event.type === "click") {
-
-        metaWithPoint._lastPointOfInterest = {x: closestPoint.x, y: closestPoint.y};
+      // Fire on click or while main mouse button is held down (drag)
+      const nativeEvent = event.native;
+      if (
+        event.type === "click" ||
+        (event.type === "mousemove" &&
+          nativeEvent instanceof MouseEvent &&
+          nativeEvent.buttons === 1)
+      ) {
+        metaWithPoint._lastPointOfInterest = { x: closestPoint.x, y: closestPoint.y };
         if (setPointOfInterest) {
           const xValue = chart.scales.x.getValueForPixel(closestPoint.x) as number;
-          const yValue = chart.scales.y.getValueForPixel(closestPoint.y)  as number; 
-          setPointOfInterest({x: xValue, y: yValue});
+          const yValue = chart.scales.y.getValueForPixel(closestPoint.y) as number;
+          setPointOfInterest({ x: xValue, y: yValue });
         }
       } else if (!metaWithPoint._lastPointOfInterest) {
         // clear point of interest if not click and no last clicked point
@@ -324,6 +330,9 @@ const FunctionValueLineChart: React.FC<FunctionValueLineChartProps> = ({
 
   const options = {
     responsive: true,
+    animation: {
+      duration: 500,
+    },
     plugins: {
       legend: {
         display: false,
