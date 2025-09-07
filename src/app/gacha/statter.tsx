@@ -117,7 +117,7 @@ function NHitsStatter({pullRates, setPointOfInterest}: {pullRates: PullRates, se
             onChange={handleSliderChange}
             className="w-full"
         />
-        <MemoizedFunctionValueLineChart data={distributions} highlightDataset={desiredBreaks} setHighlightDataset={i => {console.debug(i); if (typeof i === "number") setDesiredBreaks(i);}} setPointOfInterest={setPointOfInterest}/>
+        <MemoizedFunctionValueLineChart data={distributions} highlightDataset={desiredBreaks} setHighlightDataset={setDesiredBreaks} setPointOfInterest={setPointOfInterest}/>
     </div>
 }
 

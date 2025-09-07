@@ -39,9 +39,10 @@ const DATASET_CLICK_Y_THRESHOLD =25; // pixels
 function datasetClickPlugin(setHighlightDataset: ((index: number) => void)) {
   return {
     id: "datasetClick",
-    afterEvent: (chart: Chart, args: { event: ChartEvent }) => {
+    afterEvent: (chart: Chart & { _highlightDataset?: number }, args: { event: ChartEvent }) => {
       const { event } = args;
-      if (event.type !== "click") {
+      if (event.type !== "click") { // only on mouse down, not mouse up or click
+        console.debug("Ignoring event type " + event.type);
         return;
       }
 
@@ -110,7 +111,9 @@ function datasetClickPlugin(setHighlightDataset: ((index: number) => void)) {
         closestDatasetIdx !== null &&
         closestDatasetIdx !== highlightDataset
       ) {
+        console.debug("Switching highlighted dataset to", closestDatasetIdx);
         setHighlightDataset(closestDatasetIdx);
+        chart._highlightDataset = closestDatasetIdx; // Optional: share with other plugins
 
         // Clear last clicked point for previous highlighted dataset
         const highlightDatasetMeta = chart.getDatasetMeta(highlightDataset);
@@ -141,7 +144,8 @@ function crosshairHighlightPlugin(setPointOfInterest?: ((point : {x: number, y: 
         chart._crosshairOverlayCanvas = overlay;
       }
     },
-    afterEvent: (chart: Chart  & {_crosshairOverlayCanvas? : HTMLCanvasElement}, args: { event: ChartEvent }) => {
+    //TODO: ignore mousein and mouseout, don't clear drawing area on those
+    afterEvent: (chart: Chart  & {_crosshairOverlayCanvas? : HTMLCanvasElement, _lastPointOfInterest?: {x: number, y: number}, _highlightDataset?: number }, args: { event: ChartEvent }) => {
       const overlay: HTMLCanvasElement | undefined = chart._crosshairOverlayCanvas;
       if (!overlay) return;
       const ctx = overlay.getContext("2d");
@@ -160,6 +164,7 @@ function crosshairHighlightPlugin(setPointOfInterest?: ((point : {x: number, y: 
 
       // Find the highlighted dataset index (or default to 0)
       const highlightDataset =
+        chart._highlightDataset ??
         chart.options.plugins?.crosshairHighlight?.highlightDataset ?? 0;
 
       // Find the dataset to highlight
@@ -181,6 +186,7 @@ function crosshairHighlightPlugin(setPointOfInterest?: ((point : {x: number, y: 
       let closestPoint = null;
       if (typeof mouseX === "number") {
         const rx = Math.round(mouseX);
+        //TODO: something like         const mouseXData = chart.scales.x.getValueForPixel(mouseX); might work for sub-pixel accuracy
         // Try up to 5 px away if not found
         for (let offset = 0; offset <= 5; ++offset) {
           if (xPointMap[rx + offset]) {
@@ -195,7 +201,7 @@ function crosshairHighlightPlugin(setPointOfInterest?: ((point : {x: number, y: 
       }
       if (!closestPoint) return;
 
-      const metaWithPoint = datasetMeta as typeof datasetMeta & { _lastPointOfInterest?: {x: number, y: number} };
+      // Store last point of interest at chart level
       // Fire on click or while main mouse button is held down (drag)
       const nativeEvent = event.native;
       if (
@@ -204,14 +210,14 @@ function crosshairHighlightPlugin(setPointOfInterest?: ((point : {x: number, y: 
           nativeEvent instanceof MouseEvent &&
           nativeEvent.buttons === 1)
       ) {
-        metaWithPoint._lastPointOfInterest = { x: closestPoint.x, y: closestPoint.y };
+        chart._lastPointOfInterest = { x: closestPoint.x, y: closestPoint.y };
         if (setPointOfInterest) {
+          console.debug("Setting point of interest to", closestPoint);
           const xValue = chart.scales.x.getValueForPixel(closestPoint.x) as number;
           const yValue = chart.scales.y.getValueForPixel(closestPoint.y) as number;
           setPointOfInterest({ x: xValue, y: yValue });
         }
-      } else if (!metaWithPoint._lastPointOfInterest) {
-        // clear point of interest if not click and no last clicked point
+      } else if (!chart._lastPointOfInterest) {
         if (setPointOfInterest) {
           setPointOfInterest(null);
         }
@@ -219,9 +225,9 @@ function crosshairHighlightPlugin(setPointOfInterest?: ((point : {x: number, y: 
 
       // Highlight the point
       drawCrosshairs(ctx, closestPoint, chartArea);
-      // Also highlight last clicked point if any
-      if (metaWithPoint._lastPointOfInterest) {
-        const lastPoint = metaWithPoint._lastPointOfInterest;
+      // Also highlight last clicked point if any (now at chart level)
+      if (chart._lastPointOfInterest) {
+        const lastPoint = chart._lastPointOfInterest;
         drawCrosshairs(ctx, {x: lastPoint.x, y: lastPoint.y} as PointElement, chartArea);
       }
     },
@@ -299,8 +305,8 @@ function FunctionValueLineChart(props: FunctionValueLineChartProps) {
 
   const inlinePlugins = [];
   if (setHighlightDataset) {
-    inlinePlugins.push(crosshairHighlightPlugin(setPointOfInterest)); // order matters
     inlinePlugins.push(datasetClickPlugin(setHighlightDataset));
+    inlinePlugins.push(crosshairHighlightPlugin(setPointOfInterest)); // order matters
   }
 
   // If no labels provided, use [1, 2, 3, ...]
