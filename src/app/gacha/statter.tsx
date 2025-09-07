@@ -83,6 +83,8 @@ function NPullsStatter({pullRates}: {pullRates: PullRates}){
 // line graph: x axis = number of hits, y axis = probability
 function NHitsStatter({pullRates, setPointOfInterest}: {pullRates: PullRates, setPointOfInterest: (point : {x: number, y: number} | null) => void}){
     const [desiredBreaks, setDesiredBreaks] = useState(MAX_BREAKS);
+    const [applySparks, setApplySparks] = useState(true); // need to config this based off of desired rarity
+
     // A slider to select desired hits, between 0 and MAX_BREAKS
     const handleSliderChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         setDesiredBreaks(parseInt(event.target.value));
@@ -95,19 +97,46 @@ function NHitsStatter({pullRates, setPointOfInterest}: {pullRates: PullRates, se
 
     // construct the negative binomial distribution for number of pulls to get r hits
     // TODO: allow specifying sparks
-    const distributions = useMemo(() => 
-        Array.from({length: 5}, (_, r) => {
+    const distributions = useMemo(() => {
+        // First, build the base distributions as before
+        const base = Array.from({length: 5}, (_, r) => {
             const cdf = negativeBinomialCdf(r+1, ssrFocusProb, MAX_PULLS);
-            // Prepend r+1 zeros to represent the impossible pulls before achieving enough hits
             return Array(r+1).fill(0).concat(cdf);
-        })
-    , [ssrFocusProb]);
+        });
+
+        if (!applySparks) return base;
+
+        // apply sparking if requested. Each spark effectively reduces the required hits by 1
+        return base.map((dataset, r) =>
+            dataset.map((_, i) => {
+                const sparks = Math.floor(i / HITS_PER_SPARK);
+                if (sparks >= r + 1) return 1.0;
+                const targetR = r - sparks;
+                if (targetR < 0) return 1.0;
+                // dataset[targetR] may be shorter, so check bounds
+                const arr = base[targetR];
+                return arr && arr[i] !== undefined ? arr[i] : 1.0;
+            })
+        );
+    }, [ssrFocusProb, applySparks]);
     
     return <div>
                 <label htmlFor="hitsRange" className="block mb-2 font-medium text-gray-700 dark:text-gray-300">
             Desired Limit Breaks: {desiredBreaks}
         </label>
-        <input
+        <div className="flex items-center mb-2">
+            <input
+                type="checkbox"
+                id="applySparks"
+                checked={applySparks}
+                onChange={() => setApplySparks(!applySparks)}
+                className="mr-2"
+            />
+            <label htmlFor="applySparks" className="text-gray-700 dark:text-gray-300">
+                Apply Sparks To Target
+            </label>
+        </div>
+        {/* <input
             type="range"
             id="hitsRange"
             name="hitsRange"
@@ -116,7 +145,7 @@ function NHitsStatter({pullRates, setPointOfInterest}: {pullRates: PullRates, se
             value={desiredBreaks}
             onChange={handleSliderChange}
             className="w-full"
-        />
+        /> */}
         <MemoizedFunctionValueLineChart data={distributions} highlightDataset={desiredBreaks} setHighlightDataset={setDesiredBreaks} setPointOfInterest={setPointOfInterest}/>
     </div>
 }
