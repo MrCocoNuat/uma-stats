@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { GachaType, PullType, PullRates, PullResult, Rarity, SimpleRates } from "./types";
 import { DOUBLE_FOCUS_RATES, SINGLE_FOCUS_RATES } from "./rates";
+import { useEffect } from "react";
+import { GachaPrize } from "./assets";
 
 //TODO: results should probably be state in GachaSimulator
 export default function GachaSimulator(
@@ -28,6 +30,10 @@ export default function GachaSimulator(
 
 function Puller({ gachaType, pullRates }: { gachaType: GachaType, pullRates: PullRates }) {
     const [result, setResult] = useState<PullResult | null>(null);
+
+    useEffect(() => {
+        setResult(null);
+    }, [gachaType]);
 
     const handlePull = (pulls: PullType) => {
         const selectedRates = pullRates[pulls];
@@ -68,7 +74,7 @@ function Puller({ gachaType, pullRates }: { gachaType: GachaType, pullRates: Pul
             {result && (
                 <div className="flex gap-2">
                     {result.map((rarity, idx) => (
-                        <span key={idx} className="px-2 py-1 border rounded bg-yellow-900">{rarity}</span>
+                        <GachaPrize key={idx} gachaType={gachaType} rarity={rarity} />
                     ))}
                 </div>
             )}
