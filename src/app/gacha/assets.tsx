@@ -42,7 +42,7 @@ export function GachaPrize({ gachaType, rarity }: { gachaType : GachaType, rarit
     // SUPPORT_CARD: Tailwind diagonal gradient background (no border on inner div)
     if (isSSR && gachaType === GachaType.SUPPORT_CARD) {
         return (
-            <div className="p-1 rounded h-20 aspect-square bg-gradient-to-br from-violet-400 via-blue-300 to-green-400">
+            <div className="p-1 rounded h-20 aspect-square bg-gradient-to-br from-violet-400 via-blue-300 to-green-400 shadow-[0_0_8px_white]">
                 <div className="p-0 flex flex-col h-full aspect-square items-center justify-center text-center bg-gradient-to-br from-violet-800 via-blue-800 to-green-800">
                     <span className="text-xl font-bold">{names[gachaType][rarity]}</span>
                     {isFocus && <span className="text-xs font-semibold">FOCUS</span>}
@@ -53,8 +53,20 @@ export function GachaPrize({ gachaType, rarity }: { gachaType : GachaType, rarit
     // TRAINEE: conic gradient background (no border on inner div)
     if (isSSR && gachaType === GachaType.TRAINEE) {
         return (
-            <div className="p-1 rounded h-20 aspect-square" style={{ background: "conic-gradient(from 225deg at 50% 50%, #a78bfa 0deg, #60a5fa 60deg, #4ade80 120deg, #fbbf24 210deg, #f472b6 300deg, #a78bfa 360deg)" }}>
-                <div className="p-0 flex flex-col h-full aspect-square items-center justify-center text-center" style={{ background: "conic-gradient(from 225deg at 50% 50%, #5b21b6 0deg, #1e40af 60deg, #15803d 120deg, #b45309 210deg, #a21caf 300deg, #5b21b6 360deg)" }}>
+            <div
+                className="p-1 rounded h-20 aspect-square shadow-[0_0_8px_white]"
+                style={{
+                    background:
+                        "conic-gradient(from 225deg at 50% 50%, #a78bfa 0deg, #60a5fa 60deg, #4ade80 120deg, #fbbf24 210deg, #f472b6 300deg, #a78bfa 360deg)",
+                }}
+            >
+                <div
+                    className="p-0 flex flex-col h-full aspect-square items-center justify-center text-center"
+                    style={{
+                        background:
+                            "conic-gradient(from 225deg at 50% 50%, #5b21b6 0deg, #1e40af 60deg, #15803d 120deg, #b45309 210deg, #a21caf 300deg, #5b21b6 360deg)",
+                    }}
+                >
                     <span className="text-xl font-bold">{names[gachaType][rarity]}</span>
                     {isFocus && <span className="text-xs font-semibold">FOCUS</span>}
                 </div>

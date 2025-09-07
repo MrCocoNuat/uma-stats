@@ -1,9 +1,7 @@
 "use client"
 
-import { useState } from "react";
-import { GachaType, PullType, PullRates, PullResult, Rarity, SimpleRates } from "./types";
-import { DOUBLE_FOCUS_RATES, SINGLE_FOCUS_RATES } from "./rates";
-import { useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { GachaType, PullType, PullRates, PullResult, Rarity } from "./types";
 import { GachaPrize } from "./assets";
 
 //TODO: results should probably be state in GachaSimulator
@@ -28,30 +26,54 @@ export default function GachaSimulator(
 }
 
 
+const PRIZE_INTERVAL_MILLIS = 15;
+const PRIZE_FADEIN_MILLIS = 300;
+
 function Puller({ gachaType, pullRates }: { gachaType: GachaType, pullRates: PullRates }) {
     const [result, setResult] = useState<PullResult | null>(null);
+    const [visiblePrizes, setVisiblePrizes] = useState(0);
+    const [isFadingOut, setIsFadingOut] = useState(false);
+    const timeoutsRef = useRef<number[]>([]);
 
     useEffect(() => {
         setResult(null);
+        setVisiblePrizes(0);
+        setIsFadingOut(false);
+        // Clear any timeouts on gachaType change
+        timeoutsRef.current.forEach(id => clearTimeout(id));
+        timeoutsRef.current = [];
     }, [gachaType]);
 
     const handlePull = (pulls: PullType) => {
-        const selectedRates = pullRates[pulls];
-
-        const results = selectedRates.map((rates) => {
-            // generate a result in rates based on the defined rates, picking according to the probabilities defined for each key
-            // random number between 0 and 1
-            const rand = Math.random();
-            let cumulative = 0;
-            for (const rarity in rates) {
-                cumulative += rates[rarity as Rarity];
-                if (rand < cumulative) {
-                    return rarity as Rarity;
+        // Clear any previous timeouts
+        timeoutsRef.current.forEach(id => clearTimeout(id));
+        timeoutsRef.current = [];
+        setIsFadingOut(true); // Instantly hide all prizes (no transition)
+        setVisiblePrizes(0);
+        setTimeout(() => {
+            setResult(null); // Remove previous prizes
+            setIsFadingOut(false); // Enable fade-in for new prizes
+            const selectedRates = pullRates[pulls];
+            const results = selectedRates.map((rates) => {
+                // generate a result in rates based on the defined rates, picking according to the probabilities defined for each key
+                // random number between 0 and 1
+                const rand = Math.random();
+                let cumulative = 0;
+                for (const rarity in rates) {
+                    cumulative += rates[rarity as Rarity];
+                    if (rand < cumulative) {
+                        return rarity as Rarity;
+                    }
                 }
-            }
-            return Rarity.R; // fallback, should not happen if rates sum to 1
-        }) as PullResult;
-        setResult(results);
+                console.error("Rates do not sum to 1! ", rates);
+                return Rarity.R; // fallback, should not happen if rates sum to 1
+            }) as PullResult;
+            setResult(results);
+            results.forEach((_, i) => {
+                const timeoutId = window.setTimeout(() => setVisiblePrizes(v => Math.max(v, i + 1)), i * PRIZE_INTERVAL_MILLIS);
+                timeoutsRef.current.push(timeoutId);
+            });
+        }, 10); // Small delay to ensure opacity-0 is rendered first
     };
 
     return (
@@ -74,7 +96,12 @@ function Puller({ gachaType, pullRates }: { gachaType: GachaType, pullRates: Pul
             {result && (
                 <div className="flex gap-2">
                     {result.map((rarity, idx) => (
-                        <GachaPrize key={idx} gachaType={gachaType} rarity={rarity} />
+                        <div
+                            key={idx}
+                            className={`${isFadingOut ? '' : `transition-opacity duration-[${PRIZE_FADEIN_MILLIS}ms]`} ${idx < visiblePrizes ? 'opacity-100' : 'opacity-0'}`}
+                        >
+                            <GachaPrize gachaType={gachaType} rarity={rarity} />
+                        </div>
                     ))}
                 </div>
             )}
