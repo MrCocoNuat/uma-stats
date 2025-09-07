@@ -41,8 +41,7 @@ function datasetClickPlugin(setHighlightDataset: ((index: number) => void)) {
     id: "datasetClick",
     afterEvent: (chart: Chart & { _highlightDataset?: number }, args: { event: ChartEvent }) => {
       const { event } = args;
-      if (event.type !== "click") { // only on mouse down, not mouse up or click
-        console.debug("Ignoring event type " + event.type);
+      if (event.type !== "click") {
         return;
       }
 
@@ -146,21 +145,35 @@ function crosshairHighlightPlugin(setPointOfInterest?: ((point : {x: number, y: 
     },
     //TODO: ignore mousein and mouseout, don't clear drawing area on those
     afterEvent: (chart: Chart  & {_crosshairOverlayCanvas? : HTMLCanvasElement, _lastPointOfInterest?: {x: number, y: number}, _highlightDataset?: number }, args: { event: ChartEvent }) => {
+      // Get overlay canvas and context
       const overlay: HTMLCanvasElement | undefined = chart._crosshairOverlayCanvas;
       if (!overlay) return;
       const ctx = overlay.getContext("2d");
       if (!ctx) return;
+
       const { chartArea } = chart;
       const { event } = args;
+      
+      // Clear overlay before drawing new crosshairs to avoid artifacts.
+      ctx.clearRect(0, 0, overlay.width, overlay.height);
+
+      // Redraw last point of interest if present (e.g. after resize)
+      if (chart._lastPointOfInterest) {
+        const lastPoint = chart._lastPointOfInterest;
+        drawCrosshairs(ctx, {x: lastPoint.x, y: lastPoint.y} as PointElement, chartArea);
+      }
+      if (event.type === "mouseenter" || event.type === "mouseout") {
+        console.debug("Ignoring event type " + event.type);
+        // leave the crosshair as is on mousein/mouseout
+        return;
+      }
       if (!event || !event.x || !event.y) {
+        console.debug("No event or event position, clearing crosshair:" + event);
         ctx.clearRect(0, 0, overlay.width, overlay.height);
         return;
       }
 
       const { x: mouseX, y: mouseY } = getRelativePosition(event, chart);
-
-      // Clear overlay before drawing new crosshairs to avoid artifacts.
-      ctx.clearRect(0, 0, overlay.width, overlay.height);
 
       // Find the highlighted dataset index (or default to 0)
       const highlightDataset =
@@ -223,13 +236,8 @@ function crosshairHighlightPlugin(setPointOfInterest?: ((point : {x: number, y: 
         }
       }
 
-      // Highlight the point
+      // Highlight the mouse point
       drawCrosshairs(ctx, closestPoint, chartArea);
-      // Also highlight last clicked point if any (now at chart level)
-      if (chart._lastPointOfInterest) {
-        const lastPoint = chart._lastPointOfInterest;
-        drawCrosshairs(ctx, {x: lastPoint.x, y: lastPoint.y} as PointElement, chartArea);
-      }
     },
     afterResize: (chart: Chart & {_crosshairOverlayCanvas? : HTMLCanvasElement}) => {
       // Resize overlay canvas to match chart
