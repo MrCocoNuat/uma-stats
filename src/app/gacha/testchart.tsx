@@ -35,6 +35,7 @@ declare module "chart.js" {
 }
 
 const DATASET_CLICK_Y_THRESHOLD =25; // pixels
+const CHART_Y_PADDING = 0.01; // fraction of chart height above 1.0, below 0.0 to add as padding
 
 function datasetClickPlugin(setHighlightDataset: ((index: number) => void)) {
   return {
@@ -376,8 +377,16 @@ function FunctionValueLineChart(props: FunctionValueLineChartProps) {
           display: true,
           text: label,
         },
-        min: 0,
-        max: 1,
+        min: 0 - CHART_Y_PADDING,
+        max: 1 + CHART_Y_PADDING,
+        ticks: {
+          callback: (value: number | string) => {
+            // Convert value to number for comparison and round to 0.1
+            const num = typeof value === "string" ? parseFloat(value) : value;
+            if (Math.abs(num) < 1e-8) return "0";
+            return Math.round(num * 10) / 10;
+          },
+        },
       },
     },
   };
