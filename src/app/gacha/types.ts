@@ -1,8 +1,8 @@
 // 1 or 10 pulls
-export type PullResult = [RARITY] | [RARITY, RARITY, RARITY, RARITY, RARITY, RARITY, RARITY, RARITY, RARITY, RARITY];
+export type PullResult = [Rarity] | [Rarity, Rarity, Rarity, Rarity, Rarity, Rarity, Rarity, Rarity, Rarity, Rarity];
 
 // trainee and support card rarities have the same forms
-export enum RARITY {
+export enum Rarity {
     R = "R",
     R_FOCUS = "R Focus",
     SR = "SR",
@@ -11,27 +11,27 @@ export enum RARITY {
     SSR_FOCUS = "SSR Focus",
 }
 
-export enum GACHA_TYPE {
+export enum GachaType {
     SUPPORT_CARD = "Support Card",
     TRAINEE = "Trainee",
 }
 
-export enum PULL_TYPE {
+export enum PullType {
     ONE = 1,
     TEN = 10,
 }
 
 // with multi-pulls, rates can change per pull (e.g. guaranteed SR on 10th pull)
 export type PullRates = {
-    [key in PULL_TYPE]: 
-        { [rarity in RARITY]: number }[];
+    [key in PullType]: 
+        { [rarity in Rarity]: number }[];
 };
 
 export type SimpleRates = {
-    [rarity in RARITY]: number;
+    [rarity in Rarity]: number;
 }
 
-export enum STATTER_TYPE {
+export enum StatterType {
     N_HITS = "N Hits",
     N_PULLS = "N Pulls",
 }

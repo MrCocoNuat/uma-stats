@@ -1,23 +1,19 @@
 "use client"
 
 import { useState } from "react";
-import { GACHA_TYPE, PULL_TYPE, PullRates, PullResult, RARITY, SimpleRates } from "./types";
+import { GachaType, PullType, PullRates, PullResult, Rarity, SimpleRates } from "./types";
 import { DOUBLE_FOCUS_RATES, SINGLE_FOCUS_RATES } from "./rates";
 
 //TODO: results should probably be state in GachaSimulator
 export default function GachaSimulator(
-        {pullRates}: {pullRates: PullRates}
+        {pullRates, gachaType}: {pullRates: PullRates, gachaType: GachaType}
 ){
-    // store the gacha type in state
-    const [gachaType, setGachaType] = useState<GACHA_TYPE>(GACHA_TYPE.TRAINEE);
-    
     return (
         <div className="p-4 border rounded-lg shadow-md">
             <h2 className="text-2xl font-bold mb-4">Pull Simulator</h2>
-            <GachaTypeSelector gachaType={gachaType} setGachaType={setGachaType} />
 
             <div>
-                {gachaType === GACHA_TYPE.TRAINEE ? (
+                {gachaType === GachaType.TRAINEE ? (
                     <p>You have selected the Trainee Gacha.</p>
                 ) : (
                     <p>You have selected the Support Card Gacha.</p>
@@ -30,10 +26,10 @@ export default function GachaSimulator(
 }
 
 
-function Puller({ gachaType, pullRates }: { gachaType: GACHA_TYPE, pullRates: PullRates }) {
+function Puller({ gachaType, pullRates }: { gachaType: GachaType, pullRates: PullRates }) {
     const [result, setResult] = useState<PullResult | null>(null);
 
-    const handlePull = (pulls: PULL_TYPE) => {
+    const handlePull = (pulls: PullType) => {
         const selectedRates = pullRates[pulls];
 
         const results = selectedRates.map((rates) => {
@@ -42,12 +38,12 @@ function Puller({ gachaType, pullRates }: { gachaType: GACHA_TYPE, pullRates: Pu
             const rand = Math.random();
             let cumulative = 0;
             for (const rarity in rates) {
-                cumulative += rates[rarity as RARITY];
+                cumulative += rates[rarity as Rarity];
                 if (rand < cumulative) {
-                    return rarity as RARITY;
+                    return rarity as Rarity;
                 }
             }
-            return RARITY.R; // fallback, should not happen if rates sum to 1
+            return Rarity.R; // fallback, should not happen if rates sum to 1
         }) as PullResult;
         setResult(results);
     };
@@ -57,13 +53,13 @@ function Puller({ gachaType, pullRates }: { gachaType: GACHA_TYPE, pullRates: Pu
             <div className="flex gap-2 mb-2">
                 <button
                     className="px-4 py-2 bg-green-600 text-white rounded"
-                    onClick={() => handlePull(PULL_TYPE.ONE)}
+                    onClick={() => handlePull(PullType.ONE)}
                 >
                     Pull 1
                 </button>
                 <button
                     className="px-4 py-2 bg-green-600 text-white rounded"
-                    onClick={() => handlePull(PULL_TYPE.TEN)}
+                    onClick={() => handlePull(PullType.TEN)}
                 >
                     Pull 10
                 </button>
@@ -80,26 +76,3 @@ function Puller({ gachaType, pullRates }: { gachaType: GACHA_TYPE, pullRates: Pu
     );
 }
 
-function GachaTypeSelector({ gachaType, setGachaType }: { gachaType: GACHA_TYPE, setGachaType: (type: GACHA_TYPE) => void }) {
-    return (
-        <div className="mb-4">
-            <label className="block mb-2 font-medium">Select Gacha Type:</label>
-            <div className="flex gap-2">
-                <button
-                    type="button"
-                    className={`px-4 py-2 rounded ${gachaType === GACHA_TYPE.TRAINEE ? "bg-blue-600 text-white" : "bg-gray-800 text-white"}`}
-                    onClick={() => setGachaType(GACHA_TYPE.TRAINEE)}
-                >
-                    Trainee
-                </button>
-                <button
-                    type="button"
-                    className={`px-4 py-2 rounded ${gachaType === GACHA_TYPE.SUPPORT_CARD ? "bg-blue-600 text-white" : "bg-gray-800 text-white"}`}
-                    onClick={() => setGachaType(GACHA_TYPE.SUPPORT_CARD)}
-                >
-                    Support Card
-                </button>
-            </div>
-        </div>
-    );
-}

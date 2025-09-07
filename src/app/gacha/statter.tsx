@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState, useEffect, useMemo, useRef } from "react";
-import { PULL_TYPE, PullRates, RARITY, STATTER_TYPE } from "./types";
+import { PullType, PullRates, Rarity, StatterType } from "./types";
 import { negativeBinomialCdf } from "./stats";
 import FunctionValueLineChart from "./testchart";
 
@@ -24,8 +24,8 @@ function PointOfInterestDisplay({ setHandlePoi: setHandlePoi }: { setHandlePoi: 
 const MemoizedFunctionValueLineChart = React.memo(FunctionValueLineChart);
 
 export default function GachaStatter({pullRates} : {pullRates: PullRates}){
-    // use state two modes, type is STATTER_TYPE
-    const [mode, setMode] = useState<STATTER_TYPE>(STATTER_TYPE.N_HITS);
+    // use state two modes, type is StatterType
+    const [mode, setMode] = useState<StatterType>(StatterType.N_HITS);
 
     // callback registered by child chart to receive point of interest updates -- performance optimization
     // Store the setter for point of interest in a ref
@@ -43,14 +43,14 @@ export default function GachaStatter({pullRates} : {pullRates: PullRates}){
             <h2 className="text-2xl font-bold mb-4">Gacha Statistics</h2>
             <StatTypeSelector mode={mode} setMode={setMode} />
             <div>
-                {mode === STATTER_TYPE.N_HITS ? (
+                {mode === StatterType.N_HITS ? (
                     <p>You have selected to view statistics by set Number of Hits.</p>
                 ) : (
                     <p>You have selected to view statistics by set Number of Pulls.</p>
                 )}
             </div>
             <PointOfInterestDisplay setHandlePoi={setHandlePoi} />
-            {mode === STATTER_TYPE.N_PULLS ?
+            {mode === StatterType.N_PULLS ?
                 <NPullsStatter pullRates={pullRates}/> :
                 <NHitsStatter pullRates={pullRates} setPointOfInterest={handleNewPoi}/>
             }
@@ -90,7 +90,7 @@ function NHitsStatter({pullRates, setPointOfInterest}: {pullRates: PullRates, se
 
     // using statistics.js, create a NB distribution for SSR_FOCUS and SR_FOCUS rarities based on the pull rates
     // Example: SSR_FOCUS and SR_FOCUS are keys in pullRates with probability values
-    const ssrFocusProb = pullRates[PULL_TYPE.ONE][0][RARITY.SSR_FOCUS];
+    const ssrFocusProb = pullRates[PullType.ONE][0][Rarity.SSR_FOCUS];
     const srFocusProb = 0.0225;
 
     // construct the negative binomial distribution for number of pulls to get r hits
@@ -122,18 +122,18 @@ function NHitsStatter({pullRates, setPointOfInterest}: {pullRates: PullRates, se
 }
 
 // helper component for selecting the stat type
-function StatTypeSelector({ mode, setMode }: { mode: STATTER_TYPE, setMode: (mode: STATTER_TYPE) => void }) {
+function StatTypeSelector({ mode, setMode }: { mode: StatterType, setMode: (mode: StatterType) => void }) {
     return (
         <div className="flex gap-2 mb-4">
             <button
-                className={`px-4 py-2 rounded ${mode === STATTER_TYPE.N_HITS ? 'bg-blue-600 text-white' : 'bg-gray-800 text-white'}`}
-                onClick={() => setMode(STATTER_TYPE.N_HITS)}
+                className={`px-4 py-2 rounded ${mode === StatterType.N_HITS ? 'bg-blue-600 text-white' : 'bg-gray-800 text-white'}`}
+                onClick={() => setMode(StatterType.N_HITS)}
             >
                 By Number of Hits
             </button>
             <button
-                className={`px-4 py-2 rounded ${mode === STATTER_TYPE.N_PULLS ? 'bg-blue-600 text-white' : 'bg-gray-800 text-white'}`}
-                onClick={() => setMode(STATTER_TYPE.N_PULLS)}
+                className={`px-4 py-2 rounded ${mode === StatterType.N_PULLS ? 'bg-blue-600 text-white' : 'bg-gray-800 text-white'}`}
+                onClick={() => setMode(StatterType.N_PULLS)}
             >
                 By Number of Pulls
             </button>
