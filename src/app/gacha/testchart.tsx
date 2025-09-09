@@ -392,7 +392,7 @@ function FunctionValueLineChart(props: FunctionValueLineChartProps) {
   };
 
   return (
-    <div style={{ width: 600, height: 400 }}>
+    <div style={{ width: 600}}>
       <Line data={chartData} options={options} plugins={inlinePlugins} />
     </div>
   );

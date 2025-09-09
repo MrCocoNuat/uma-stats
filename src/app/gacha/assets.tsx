@@ -44,8 +44,8 @@ export function GachaPrize({ gachaType, rarity }: { gachaType : GachaType, rarit
         return (
             <div className="p-1 rounded h-20 aspect-square bg-gradient-to-br from-violet-400 via-blue-300 to-green-400 shadow-[0_0_8px_white]">
                 <div className="p-0 flex flex-col h-full aspect-square items-center justify-center text-center bg-gradient-to-br from-violet-800 via-blue-800 to-green-800">
-                    <span className="text-xl font-bold">{names[gachaType][rarity]}</span>
-                    {isFocus && <span className="text-xs font-semibold">FOCUS</span>}
+                    <span className="text-xl font-bold text-shadow-[0_0_2px_black,0_0_4px_yellow]">{names[gachaType][rarity]}</span>
+                    {isFocus && <BannerFocusBadge />}
                 </div>
             </div>
         );
@@ -67,8 +67,8 @@ export function GachaPrize({ gachaType, rarity }: { gachaType : GachaType, rarit
                             "conic-gradient(from 225deg at 50% 50%, #5b21b6 0deg, #1e40af 60deg, #15803d 120deg, #b45309 210deg, #a21caf 300deg, #5b21b6 360deg)",
                     }}
                 >
-                    <span className="text-xl font-bold">{names[gachaType][rarity]}</span>
-                    {isFocus && <span className="text-xs font-semibold">FOCUS</span>}
+                    <span className="text-xl font-bold text-shadow-[0_0_2px_black,0_0_4px_yellow]">{names[gachaType][rarity]}</span>
+                    {isFocus && <BannerFocusBadge />}
                 </div>
             </div>
         );
@@ -79,8 +79,16 @@ export function GachaPrize({ gachaType, rarity }: { gachaType : GachaType, rarit
         <div
             className={`p-0 flex flex-col h-20 aspect-square items-center justify-center border-4 rounded text-center ${baseColorClasses[gachaType][rarity as Exclude<Rarity, Rarity.SSR | Rarity.SSR_FOCUS>]}`}
         >
-            <span className="text-xl font-bold">{names[gachaType][rarity as Exclude<Rarity, Rarity.SSR | Rarity.SSR_FOCUS>]}</span>
-            {isFocus && <span className="text-xs font-semibold text-orange-200">FOCUS</span>}
+            <span className="text-xl font-bold text-shadow-[0_0_1px_black,0_0_2px_yellow]">{names[gachaType][rarity as Exclude<Rarity, Rarity.SSR | Rarity.SSR_FOCUS>]}</span>
+            {isFocus && <BannerFocusBadge />}
+        </div>
+    );
+}
+
+function BannerFocusBadge() {
+    return (
+        <div className="text-xs font-semibold text-shadow-[0_0_2px_black,0_0_4px_yellow]">
+            FOCUS
         </div>
     );
 }

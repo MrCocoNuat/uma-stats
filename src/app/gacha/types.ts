@@ -30,8 +30,3 @@ export type PullRates = {
 export type SimpleRates = {
     [rarity in Rarity]: number;
 }
-
-export enum StatterType {
-    N_HITS = "N Hits",
-    N_PULLS = "N Pulls",
-}

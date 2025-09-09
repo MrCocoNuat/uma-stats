@@ -15,7 +15,7 @@ export default function Gacha(){
     return <div>
         <GachaTypeSelector gachaType={gachaType} setGachaType={setGachaType} />
         <RateEditor rates={pullRates} setPullRates={setPullRates} />
-        <GachaStatter pullRates={pullRates}/>
+        <GachaStatter pullRates={pullRates} gachaType={gachaType}/>
         <GachaSimulator pullRates={pullRates} gachaType={gachaType}/>
 
         </div>
@@ -81,7 +81,7 @@ function RateEditor({ rates, setPullRates: setRates }: { rates: PullRates, setPu
         { key: Rarity.SSR_FOCUS, label: "SSR Focus", writable: true },
         { key: Rarity.SR, label: "SR", writable: true },
         { key: Rarity.SR_FOCUS, label: "SR Focus", writable: true },
-        { key: Rarity.R, label: "N", writable: false },
+        { key: Rarity.R, label: "R", writable: false },
     ];
 
     return (
