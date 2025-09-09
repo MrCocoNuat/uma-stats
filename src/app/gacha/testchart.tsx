@@ -248,6 +248,33 @@ function crosshairHighlightPlugin(setPointOfInterest?: ((point : {x: number, y: 
       // Highlight the mouse point
       drawCrosshairs(ctx, { x: closestPoint.x, y: closestPoint.y } as PointElement, chartArea);
     },
+    afterDraw(chart: Chart & { _crosshairOverlayCanvas?: HTMLCanvasElement, _lastPointOfInterest?: { x: number, y: number }, _highlightDataset?: number }) {
+      // Draw animated crosshair on every frame
+      const overlay: HTMLCanvasElement | undefined = chart._crosshairOverlayCanvas;
+      if (!overlay) return;
+      const ctx = overlay.getContext("2d");
+      if (!ctx) return;
+      ctx.clearRect(0, 0, overlay.width, overlay.height);
+      if (!chart._lastPointOfInterest) return;
+      // Use the lastPointOfInterest.x to find the closest animated point
+      const highlightDataset = chart._highlightDataset ?? chart.options.plugins?.crosshairHighlight?.highlightDataset ?? 0;
+      const datasetMeta = chart.getDatasetMeta(highlightDataset);
+      if (!datasetMeta || !datasetMeta.data || datasetMeta.data.length === 0) return;
+      // Find the closest animated point by x
+      let closestPoint: PointElement | null = null;
+      let minDist = Infinity;
+      //TODO: kind of inefficient to loop through all points every frame, but datasets are small? Optimize later if needed
+      for (const point of datasetMeta.data) {
+        const dist = Math.abs(point.x - chart._lastPointOfInterest.x);
+        if (dist < minDist) {
+          minDist = dist;
+          closestPoint = point as PointElement;
+        }
+      }
+      if (closestPoint) {
+        drawCrosshairs(ctx, closestPoint, chart.chartArea);
+      }
+    },
     afterUpdate(chart : Chart & {_crosshairOverlayCanvas? : HTMLCanvasElement, _lastPointOfInterest?: {x: number, y: number}, _highlightDataset?: number }) {
       // This will run after chart.update() is called
       // You can check chart.options.plugins.crosshairHighlight.highlightDataset here
