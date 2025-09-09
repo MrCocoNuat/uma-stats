@@ -68,7 +68,7 @@ function datasetClickPlugin(setHighlightDataset: ((index: number) => void)) {
           const dataset = chart.data.datasets[idx].data as number[];
           for (let i = 0; i < meta.data.length; ++i) {
             // Ensure dataX is a number
-            let dataX = chart.data.labels ? chart.data.labels[i] : i + 1;
+            const dataX = chart.data.labels ? chart.data.labels[i] : i + 1;
             const px = Math.round(chart.scales.x.getPixelForValue(Number(dataX)));
             const py = chart.scales.y.getPixelForValue(dataset[i]);
             xPointMap[px] = { dataIndex: i, x: px, y: py };
@@ -194,7 +194,7 @@ function crosshairHighlightPlugin(setPointOfInterest?: ((point : {x: number, y: 
         metaWithMap._xPointMap = {};
         const dataset = chart.data.datasets[highlightDataset].data as number[];
         for (let i = 0; i < datasetMeta.data.length; ++i) {
-          let dataX = chart.data.labels ? chart.data.labels[i] : i + 1;
+          const dataX = chart.data.labels ? chart.data.labels[i] : i + 1;
           const px = Math.round(chart.scales.x.getPixelForValue(Number(dataX)));
           const py = chart.scales.y.getPixelForValue(dataset[i]);
           metaWithMap._xPointMap[px] = { dataIndex: i, x: px, y: py };
@@ -235,7 +235,7 @@ function crosshairHighlightPlugin(setPointOfInterest?: ((point : {x: number, y: 
           console.debug("Setting point of interest to", closestPoint);
           // Convert back to data values for callback
           const dataIndex = closestPoint.dataIndex;
-          let dataX = chart.data.labels ? chart.data.labels[dataIndex] : dataIndex + 1;
+          const dataX = chart.data.labels ? chart.data.labels[dataIndex] : dataIndex + 1;
           const dataY = (chart.data.datasets[highlightDataset].data as number[])[dataIndex];
           setPointOfInterest({ x: Number(dataX), y: dataY });
         }
@@ -309,7 +309,7 @@ function crosshairHighlightPlugin(setPointOfInterest?: ((point : {x: number, y: 
         metaWithMap._xPointMap = {};
         const dataset = chart.data.datasets[highlightDataset].data as number[];
         for (let i = 0; i < datasetMeta.data.length; ++i) {
-          let dataX = chart.data.labels ? chart.data.labels[i] : i + 1;
+          const dataX = chart.data.labels ? chart.data.labels[i] : i + 1;
           const px = Math.round(chart.scales.x.getPixelForValue(Number(dataX)));
           const py = chart.scales.y.getPixelForValue(dataset[i]);
           metaWithMap._xPointMap[px] = { dataIndex: i, x: px, y: py };
@@ -338,7 +338,7 @@ function crosshairHighlightPlugin(setPointOfInterest?: ((point : {x: number, y: 
           if (setPointOfInterest) {
             // Convert back to data values for callback
             const dataIndex = closestPoint.dataIndex;
-            let dataX = chart.data.labels ? chart.data.labels[dataIndex] : dataIndex + 1;
+            const dataX = chart.data.labels ? chart.data.labels[dataIndex] : dataIndex + 1;
             const dataY = (chart.data.datasets[highlightDataset].data as number[])[dataIndex];
             setPointOfInterest({ x: Number(dataX), y: dataY });
           }
