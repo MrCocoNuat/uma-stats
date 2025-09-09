@@ -136,15 +136,18 @@ function crosshairHighlightPlugin(setPointOfInterest?: ((point : {x: number, y: 
       // Create overlay canvas if not already present
       if (!chart._crosshairOverlayCanvas) {
         const mainCanvas = chart.canvas;
+        const container = mainCanvas.parentNode as HTMLElement;
         const overlay = document.createElement("canvas");
         overlay.style.position = "absolute";
-        overlay.style.left = mainCanvas.offsetLeft + "px";
-        overlay.style.top = mainCanvas.offsetTop + "px";
+        overlay.style.left = "0";
+        overlay.style.top = "0";
+        overlay.style.width = "100%";
+        overlay.style.height = "100%";
         overlay.width = mainCanvas.width;
         overlay.height = mainCanvas.height;
         overlay.style.pointerEvents = "none";
         overlay.className = "chartjs-crosshair-overlay";
-        mainCanvas.parentNode?.appendChild(overlay);
+        container.appendChild(overlay);
         chart._crosshairOverlayCanvas = overlay;
       }
     },
@@ -355,6 +358,7 @@ function crosshairHighlightPlugin(setPointOfInterest?: ((point : {x: number, y: 
       if (overlay) {
         overlay.width = chart.width;
         overlay.height = chart.height;
+        // No need to update left/top, overlay is now always at (0,0) in the container
       }
     },
     beforeDestroy: (chart: Chart & {_crosshairOverlayCanvas? : HTMLCanvasElement}) => {
@@ -519,7 +523,7 @@ function FunctionValueLineChart(props: FunctionValueLineChartProps) {
   };
 
   return (
-    <div style={{ width: 600}}>
+    <div style={{ width: 600, position: 'relative' }}>
       <Line ref={chartRef} data={chartData} options={options} plugins={inlinePlugins}/>
     </div>
   );
