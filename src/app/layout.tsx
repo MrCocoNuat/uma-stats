@@ -34,7 +34,7 @@ export default function RootLayout({
       >
             <ThemeProvider>
               <header>
-                <ThemeToggle />
+                {/* <ThemeToggle /> */}
               </header>
         {children}
             </ThemeProvider>

@@ -124,7 +124,7 @@ export default function GachaStatter({pullRates, gachaType} : {pullRates: PullRa
         if (handlePoiRef.current) handlePoiRef.current(point);
     };
     return (
-        <div className="p-4 border flex">
+        <div className="p-4 mb-4 border flex flex-col">
             <StatGraph pullRates={pullRates} setPointOfInterest={handleNewPoi} applySparks={applySparks} desiredBreaks={desiredBreaks} setDesiredBreaks={setDesiredBreaks}/>
             <div className="flex flex-col">
                 <PointOfInterestDisplay setHandlePoi={setHandlePoi} gachaType={gachaType} desiredBreaks={desiredBreaks} setDesiredBreaks={setDesiredBreaks} applySparks={applySparks} setApplySparks={setApplySparks} pullRates={pullRates} />
@@ -146,12 +146,12 @@ function StatGraph({pullRates, setPointOfInterest, applySparks, desiredBreaks, s
     const srFocusProb = 0.0225;
 
     // construct the negative binomial distribution for number of pulls to get r hits
-    // TODO: allow specifying sparks
     const distributions = useMemo(() => {
         // First, build the base distributions as before
         const base = Array.from({length: 5}, (_, r) => {
-            const cdf = negativeBinomialCdf(r+1, ssrFocusProb, MAX_PULLS);
-            return Array(r+1).fill(0).concat(cdf);
+            const cdf = negativeBinomialCdf(r + 1, ssrFocusProb, MAX_PULLS);
+            // Pad with zeros for the impossibility of getting r hits in fewer than r pulls
+            return Array(r + 1).fill(0).concat(cdf).slice(0, MAX_PULLS);
         });
 
         if (!applySparks) return base;
@@ -159,7 +159,7 @@ function StatGraph({pullRates, setPointOfInterest, applySparks, desiredBreaks, s
         // apply sparking if requested. Each spark effectively reduces the required hits by 1
         return base.map((dataset, r) =>
             dataset.map((_, i) => {
-                const sparks = Math.floor(i / HITS_PER_SPARK);
+                const sparks = Math.floor((i + 1) / HITS_PER_SPARK);
                 if (sparks >= r + 1) return 1.0;
                 const targetR = r - sparks;
                 if (targetR < 0) return 1.0;
@@ -171,10 +171,6 @@ function StatGraph({pullRates, setPointOfInterest, applySparks, desiredBreaks, s
     }, [ssrFocusProb, applySparks]);
     
     return <div>
-        <MemoizedFunctionValueLineChart data={distributions} highlightDataset={desiredBreaks} setHighlightDataset={setDesiredBreaks} setPointOfInterest={setPointOfInterest}/>
+        <MemoizedFunctionValueLineChart xLabel={"Number of Pulls"} data={distributions} highlightDataset={desiredBreaks} setHighlightDataset={setDesiredBreaks} setPointOfInterest={setPointOfInterest}/>
     </div>
 }
-
-    // sentence is:
-    // Probability of [X LB]/[pulling the trainee] in [Y pulls] is [Z%]
-

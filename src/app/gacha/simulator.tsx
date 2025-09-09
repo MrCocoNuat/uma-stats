@@ -9,17 +9,8 @@ export default function GachaSimulator(
         {pullRates, gachaType}: {pullRates: PullRates, gachaType: GachaType}
 ){
     return (
-        <div className="p-4 border rounded-lg shadow-md">
-            <h2 className="text-2xl font-bold mb-4">Pull Simulator</h2>
-
-            <div>
-                {gachaType === GachaType.TRAINEE ? (
-                    <p>You have selected the Trainee Gacha.</p>
-                ) : (
-                    <p>You have selected the Support Card Gacha.</p>
-                )}
-            </div>
-            
+        <div className="p-4 mb-4 border flex flex-col items-center">
+            <h2 className="text-2xl font-bold">Simulator</h2>
             <Puller gachaType={gachaType} pullRates={pullRates} />
         </div>
     );
@@ -77,7 +68,7 @@ function Puller({ gachaType, pullRates }: { gachaType: GachaType, pullRates: Pul
     };
 
     return (
-        <div className="mt-4">
+        <div className="mt-4 flex flex-col items-center">
             <div className="flex gap-2 mb-2">
                 <button
                     className="px-4 py-2 bg-green-600 text-white rounded"
@@ -94,7 +85,9 @@ function Puller({ gachaType, pullRates }: { gachaType: GachaType, pullRates: Pul
             </div>
 
             {result && (
-                <div className="flex gap-2">
+                <div
+                    className={`grid ${result.length === 1 ? "grid-cols-1" : "grid-cols-5"} gap-2 justify-items-center`}
+                >
                     {result.map((rarity, idx) => (
                         <div
                             key={idx}

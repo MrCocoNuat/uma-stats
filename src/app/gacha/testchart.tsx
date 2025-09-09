@@ -14,6 +14,7 @@ import {
 import { Line } from "react-chartjs-2";
 import { after } from "node:test";
 import { getRelativePosition } from "chart.js/helpers";
+import { time } from "console";
 
 // Register necessary Chart.js components
 ChartJS.register(
@@ -400,8 +401,8 @@ export interface FunctionValueLineChartProps {
   data: number[] | number[][];
   /** Optional: labels for the x-axis (defaults to [1,2,...]) */
   labels?: (string | number)[];
-  /** Optional: dataset label */
-  label?: string;
+  xLabel?: string;
+  yLabel?: string;
   highlightDataset?: number; // index of dataset to highlight
   setHighlightDataset?: (index: number) => void; 
   setPointOfInterest?: (point: {x: number, y: number} | null) => void; 
@@ -411,11 +412,16 @@ function FunctionValueLineChart(props: FunctionValueLineChartProps) {
   const {
     data,
     labels,
-    label = "f(x)",
+    xLabel : propsXLabel,
+    yLabel : propsYLabel,
     highlightDataset,
     setHighlightDataset,
     setPointOfInterest,
   } = props;
+
+  // Set default values if not provided
+  const xLabel = propsXLabel ?? "x";
+  const yLabel = propsYLabel ?? "Probability";
 
   const chartRef = useRef<ChartJS<"line", number[] | number[][], unknown> | null>(null);
 
@@ -445,7 +451,7 @@ function FunctionValueLineChart(props: FunctionValueLineChartProps) {
 
   const datasets = isMultipleDatasets
     ? (data as number[][]).map((dataset, idx) => ({
-        label: label + idx,
+        label: yLabel + idx,
         data: dataset,
         radius: 0,
         borderColor: idx === highlightDataset ? "red" : "rgba(80, 57, 57, 1)",
@@ -453,7 +459,7 @@ function FunctionValueLineChart(props: FunctionValueLineChartProps) {
       }))
     : [
         {
-          label,
+          label: yLabel,
           data,
           radius: 0,
           borderColor: "red",
@@ -483,15 +489,20 @@ function FunctionValueLineChart(props: FunctionValueLineChartProps) {
     },
     scales: {
       x: {
+        type: 'linear' as const,
         title: {
           display: true,
-          text: "x",
+          text: xLabel,
         },
+        ticks: {
+          stepSize: 50,
+        }
       },
       y: {
+        type: 'linear' as const,
         title: {
           display: true,
-          text: label,
+          text: yLabel,
         },
         min: 0 - CHART_Y_PADDING,
         max: 1 + CHART_Y_PADDING,
