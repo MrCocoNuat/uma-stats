@@ -63,15 +63,18 @@ function datasetClickPlugin(setHighlightDataset: ((index: number) => void)) {
 
         for (let idx = 0; idx < datasetCount; ++idx) {
           const meta = datasetMetas[idx];
-          // Build xPointMap for this dataset
-          const xPointMap: Record<number, PointElement> = {};
-          for (const point of meta.data) {
-            const px = Math.round(point.x);
-            xPointMap[px] = point as PointElement;
+          // Build xPointMap for this dataset using true data values
+          const xPointMap: Record<number, { dataIndex: number, x: number, y: number }> = {};
+          const dataset = chart.data.datasets[idx].data as number[];
+          for (let i = 0; i < meta.data.length; ++i) {
+            // Ensure dataX is a number
+            let dataX = chart.data.labels ? chart.data.labels[i] : i + 1;
+            const px = Math.round(chart.scales.x.getPixelForValue(Number(dataX)));
+            const py = chart.scales.y.getPixelForValue(dataset[i]);
+            xPointMap[px] = { dataIndex: i, x: px, y: py };
           }
-
           // Find closest point by x (try up to 5 px away)
-          let point: PointElement | undefined;
+          let point: { dataIndex: number, x: number, y: number } | undefined;
           for (let offset = 0; offset <= 5; ++offset) {
             if (xPointMap[rx + offset]) {
               point = xPointMap[rx + offset];
@@ -186,18 +189,21 @@ function crosshairHighlightPlugin(setPointOfInterest?: ((point : {x: number, y: 
       if (!datasetMeta || !datasetMeta.data || datasetMeta.data.length === 0) return;
 
       // Build a map from rounded x to point (cache on meta for perf)
-      const metaWithMap = datasetMeta as typeof datasetMeta & { _xPointMap?: Record<number, PointElement> };
+      const metaWithMap = datasetMeta as typeof datasetMeta & { _xPointMap?: Record<number, { dataIndex: number, x: number, y: number }> };
       if (!metaWithMap._xPointMap) {
         metaWithMap._xPointMap = {};
-        for (const point of datasetMeta.data) {
-          const rx = Math.round(point.x);
-          metaWithMap._xPointMap[rx] = point as PointElement;
+        const dataset = chart.data.datasets[highlightDataset].data as number[];
+        for (let i = 0; i < datasetMeta.data.length; ++i) {
+          let dataX = chart.data.labels ? chart.data.labels[i] : i + 1;
+          const px = Math.round(chart.scales.x.getPixelForValue(Number(dataX)));
+          const py = chart.scales.y.getPixelForValue(dataset[i]);
+          metaWithMap._xPointMap[px] = { dataIndex: i, x: px, y: py };
         }
       }
       const xPointMap = metaWithMap._xPointMap;
 
       // Find the closest point by rounded x
-      let closestPoint = null;
+      let closestPoint: { dataIndex: number, x: number, y: number } | null = null;
       if (typeof mouseX === "number") {
         const rx = Math.round(mouseX);
         //TODO: something like         const mouseXData = chart.scales.x.getValueForPixel(mouseX); might work for sub-pixel accuracy
@@ -227,9 +233,11 @@ function crosshairHighlightPlugin(setPointOfInterest?: ((point : {x: number, y: 
         chart._lastPointOfInterest = { x: closestPoint.x, y: closestPoint.y };
         if (setPointOfInterest) {
           console.debug("Setting point of interest to", closestPoint);
-          const xValue = chart.scales.x.getValueForPixel(closestPoint.x) as number;
-          const yValue = chart.scales.y.getValueForPixel(closestPoint.y) as number;
-          setPointOfInterest({ x: xValue, y: yValue });
+          // Convert back to data values for callback
+          const dataIndex = closestPoint.dataIndex;
+          let dataX = chart.data.labels ? chart.data.labels[dataIndex] : dataIndex + 1;
+          const dataY = (chart.data.datasets[highlightDataset].data as number[])[dataIndex];
+          setPointOfInterest({ x: Number(dataX), y: dataY });
         }
       } else if (!chart._lastPointOfInterest) {
         if (setPointOfInterest) {
@@ -238,7 +246,7 @@ function crosshairHighlightPlugin(setPointOfInterest?: ((point : {x: number, y: 
       }
 
       // Highlight the mouse point
-      drawCrosshairs(ctx, closestPoint, chartArea);
+      drawCrosshairs(ctx, { x: closestPoint.x, y: closestPoint.y } as PointElement, chartArea);
     },
     afterUpdate(chart : Chart & {_crosshairOverlayCanvas? : HTMLCanvasElement, _lastPointOfInterest?: {x: number, y: number}, _highlightDataset?: number }) {
       // This will run after chart.update() is called
@@ -270,16 +278,19 @@ function crosshairHighlightPlugin(setPointOfInterest?: ((point : {x: number, y: 
         if (!datasetMeta || !datasetMeta.data || datasetMeta.data.length === 0) return;
 
         // Build a map from rounded x to point (cache on meta for perf)
-        const metaWithMap = datasetMeta as typeof datasetMeta & { _xPointMap?: Record<number, PointElement> };
+        const metaWithMap = datasetMeta as typeof datasetMeta & { _xPointMap?: Record<number, { dataIndex: number, x: number, y: number }> };
         metaWithMap._xPointMap = {};
-        for (const point of datasetMeta.data) {
-          const rx = Math.round(point.x);
-          metaWithMap._xPointMap[rx] = point as PointElement;
+        const dataset = chart.data.datasets[highlightDataset].data as number[];
+        for (let i = 0; i < datasetMeta.data.length; ++i) {
+          let dataX = chart.data.labels ? chart.data.labels[i] : i + 1;
+          const px = Math.round(chart.scales.x.getPixelForValue(Number(dataX)));
+          const py = chart.scales.y.getPixelForValue(dataset[i]);
+          metaWithMap._xPointMap[px] = { dataIndex: i, x: px, y: py };
         }
         const xPointMap = metaWithMap._xPointMap;
 
         // Find the closest point by rounded x
-        let closestPoint = null;
+        let closestPoint: { dataIndex: number, x: number, y: number } | null = null;
         if (typeof lastX === "number") {
           const rx = Math.round(lastX);
           for (let offset = 0; offset <= 5; ++offset) {
@@ -298,11 +309,13 @@ function crosshairHighlightPlugin(setPointOfInterest?: ((point : {x: number, y: 
           // Update lastPointOfInterest to new y
           chart._lastPointOfInterest = { x: closestPoint.x, y: closestPoint.y };
           if (setPointOfInterest) {
-            const xValue = chart.scales.x.getValueForPixel(closestPoint.x) as number;
-            const yValue = chart.scales.y.getValueForPixel(closestPoint.y) as number;
-            setPointOfInterest({ x: xValue, y: yValue });
+            // Convert back to data values for callback
+            const dataIndex = closestPoint.dataIndex;
+            let dataX = chart.data.labels ? chart.data.labels[dataIndex] : dataIndex + 1;
+            const dataY = (chart.data.datasets[highlightDataset].data as number[])[dataIndex];
+            setPointOfInterest({ x: Number(dataX), y: dataY });
           }
-          drawCrosshairs(ctx, closestPoint, chart.chartArea);
+          drawCrosshairs(ctx, { x: closestPoint.x, y: closestPoint.y } as PointElement, chart.chartArea);
         } else {
           chart._lastPointOfInterest = undefined;
         }
