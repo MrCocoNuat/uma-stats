@@ -16,6 +16,7 @@ function PointOfInterestDisplay({
     desiredBreaks,
     setDesiredBreaks,
     applySparks,
+    setApplySparks,
     pullRates
 }: { 
     setHandlePoi: (cb: (point: {x: number, y: number} | null) => void) => void,
@@ -23,6 +24,7 @@ function PointOfInterestDisplay({
     desiredBreaks: number,
     setDesiredBreaks: (breaks: number) => void,
     applySparks: boolean,
+    setApplySparks: (v: boolean) => void,
     pullRates: PullRates
 }) {
     const [pointOfInterest, setPointOfInterest] = useState<{x: number, y: number} | null>(null);
@@ -33,17 +35,32 @@ function PointOfInterestDisplay({
     }, [setHandlePoi]);
 
     return (
-        gachaType === GachaType.SUPPORT_CARD ? (
-            <SupportCardPoiDisplay 
-                pointOfInterest={pointOfInterest}
-                desiredBreaks={desiredBreaks}
-                setDesiredBreaks={setDesiredBreaks}
-                applySparks={applySparks}
-                pullRates={pullRates}
-            />
-        ) : 
-            <></>
-            // <TraineePoiDisplay pointOfInterest={pointOfInterest} />
+        <>
+            <div className="flex items-center mb-2">
+                <input
+                    type="checkbox"
+                    id="applySparks"
+                    checked={applySparks}
+                    onChange={() => setApplySparks(!applySparks)}
+                    className="mr-2"
+                />
+                <label htmlFor="applySparks" className="text-gray-700 dark:text-gray-300">
+                    Apply Sparks To Target
+                </label>
+            </div>
+            {gachaType === GachaType.SUPPORT_CARD ? (
+                <SupportCardPoiDisplay 
+                    pointOfInterest={pointOfInterest}
+                    desiredBreaks={desiredBreaks}
+                    setDesiredBreaks={setDesiredBreaks}
+                    applySparks={applySparks}
+                    pullRates={pullRates}
+                />
+            ) : 
+                <></>
+                // <TraineePoiDisplay pointOfInterest={pointOfInterest} />
+            }
+        </>
     );
 }
 // NEXT: the range input to set desired breaks does not refresh the chart. Figure out the data flow
@@ -51,23 +68,37 @@ function SupportCardPoiDisplay({pointOfInterest, desiredBreaks, setDesiredBreaks
     return (
         
         <div>
+            <div className="flex flex-row space-x-2 mb-2">
+            {Array.from({ length: MAX_BREAKS + 1 }, (_, i) => (
+                <button
+                key={i}
+                className={`px-2 py-1 rounded border ${desiredBreaks === i ? "bg-blue-100 border-blue-500" : "bg-white border-gray-300"} flex items-center`}
+                onClick={() => setDesiredBreaks(i)}
+                aria-label={`Set desired breaks to ${i}`}
+                type="button"
+                >
+                {Array.from({ length: MAX_BREAKS }, (_, j) =>
+                    j < i ? (
+                    // filled blue vertical rhombus
+                    <svg key={j} width="16" height="16" viewBox="0 0 16 16" className="mx-0.5" aria-hidden="true">
+                        <polygon points="8,2 14,8 8,14 2,8" fill="#2563eb" stroke="#2563eb" strokeWidth="1"/>
+                    </svg>
+                    ) : (
+                    // empty rhombus
+                    <svg key={j} width="16" height="16" viewBox="0 0 16 16" className="mx-0.5" aria-hidden="true">
+                        <polygon points="8,2 14,8 8,14 2,8" fill="none" stroke="#2563eb" strokeWidth="1"/>
+                    </svg>
+                    )
+                )}
+                </button>
+            ))}
+            </div>
             {pointOfInterest ? (
-                <div className="flex flex-col">
-                    <p>Probability of achieving</p>
-                    <div>
-                        <input
-                            type="range"
-                            id="desiredBreaks"
-                            min={0}
-                            max={MAX_BREAKS}
-                            value={desiredBreaks}
-                            onChange={e => setDesiredBreaks(Number(e.target.value))}
-                        />
-                    </div>
-                    <p>in {pointOfInterest.x} pulls is {(pointOfInterest.y * 100).toFixed(4)}%</p>
-                </div>
+            <div className="flex flex-col">
+                <p>Probability of achieving the desired result in {pointOfInterest.x} pulls is {(pointOfInterest.y * 100).toFixed(2)}%</p>
+            </div>
             ) : (
-                <p>No point of interest selected.</p>
+            <p>No point of interest selected.</p>
             )}
         </div>
     )
@@ -96,19 +127,7 @@ export default function GachaStatter({pullRates, gachaType} : {pullRates: PullRa
         <div className="p-4 border flex">
             <StatGraph pullRates={pullRates} setPointOfInterest={handleNewPoi} applySparks={applySparks} desiredBreaks={desiredBreaks} setDesiredBreaks={setDesiredBreaks}/>
             <div className="flex flex-col">
-                <div className="flex items-center mb-2">
-                    <input
-                        type="checkbox"
-                        id="applySparks"
-                        checked={applySparks}
-                        onChange={() => setApplySparks(!applySparks)}
-                        className="mr-2"
-                    />
-                    <label htmlFor="applySparks" className="text-gray-700 dark:text-gray-300">
-                        Apply Sparks To Target
-                    </label>
-                </div>
-                <PointOfInterestDisplay setHandlePoi={setHandlePoi} gachaType={gachaType} desiredBreaks={desiredBreaks} setDesiredBreaks={setDesiredBreaks} applySparks={applySparks} pullRates={pullRates} />
+                <PointOfInterestDisplay setHandlePoi={setHandlePoi} gachaType={gachaType} desiredBreaks={desiredBreaks} setDesiredBreaks={setDesiredBreaks} applySparks={applySparks} setApplySparks={setApplySparks} pullRates={pullRates} />
             </div>
         </div>
     );
