@@ -240,6 +240,74 @@ function crosshairHighlightPlugin(setPointOfInterest?: ((point : {x: number, y: 
       // Highlight the mouse point
       drawCrosshairs(ctx, closestPoint, chartArea);
     },
+    afterUpdate(chart : Chart & {_crosshairOverlayCanvas? : HTMLCanvasElement, _lastPointOfInterest?: {x: number, y: number}, _highlightDataset?: number }) {
+      // This will run after chart.update() is called
+      // You can check chart.options.plugins.crosshairHighlight.highlightDataset here
+
+      // props might have changed! the cache map needs to be recalculated,
+      // the highlight dataset checked,
+      // and the overlay redrawn if necessary. Keep the x coordinate of the last point of interest, but recalculate and redraw y
+
+      const overlay: HTMLCanvasElement | undefined = chart._crosshairOverlayCanvas;
+      if (!overlay) return;
+      const ctx = overlay.getContext("2d");
+      if (!ctx) return;
+
+      // Clear overlay before drawing new crosshairs to avoid artifacts.
+      ctx.clearRect(0, 0, overlay.width, overlay.height);
+
+      // If there was a last point of interest, try to recalculate its y for the new dataset
+      if (chart._lastPointOfInterest) {
+        const { x: lastX } = chart._lastPointOfInterest;
+
+        // Find the highlighted dataset index (or default to 0)
+        const highlightDataset =
+          chart._highlightDataset ??
+          chart.options.plugins?.crosshairHighlight?.highlightDataset ?? 0;
+
+        // Find the dataset to highlight
+        const datasetMeta = chart.getDatasetMeta(highlightDataset);
+        if (!datasetMeta || !datasetMeta.data || datasetMeta.data.length === 0) return;
+
+        // Build a map from rounded x to point (cache on meta for perf)
+        const metaWithMap = datasetMeta as typeof datasetMeta & { _xPointMap?: Record<number, PointElement> };
+        metaWithMap._xPointMap = {};
+        for (const point of datasetMeta.data) {
+          const rx = Math.round(point.x);
+          metaWithMap._xPointMap[rx] = point as PointElement;
+        }
+        const xPointMap = metaWithMap._xPointMap;
+
+        // Find the closest point by rounded x
+        let closestPoint = null;
+        if (typeof lastX === "number") {
+          const rx = Math.round(lastX);
+          for (let offset = 0; offset <= 5; ++offset) {
+        if (xPointMap[rx + offset]) {
+          closestPoint = xPointMap[rx + offset];
+          break;
+        }
+        if (xPointMap[rx - offset]) {
+          closestPoint = xPointMap[rx - offset];
+          break;
+        }
+          }
+        }
+
+        if (closestPoint) {
+          // Update lastPointOfInterest to new y
+          chart._lastPointOfInterest = { x: closestPoint.x, y: closestPoint.y };
+          if (setPointOfInterest) {
+            const xValue = chart.scales.x.getValueForPixel(closestPoint.x) as number;
+            const yValue = chart.scales.y.getValueForPixel(closestPoint.y) as number;
+            setPointOfInterest({ x: xValue, y: yValue });
+          }
+          drawCrosshairs(ctx, closestPoint, chart.chartArea);
+        } else {
+          chart._lastPointOfInterest = undefined;
+        }
+      }
+    },
     afterResize: (chart: Chart & {_crosshairOverlayCanvas? : HTMLCanvasElement}) => {
       // Resize overlay canvas to match chart
       const overlay: HTMLCanvasElement | undefined = chart._crosshairOverlayCanvas;
@@ -308,6 +376,14 @@ function FunctionValueLineChart(props: FunctionValueLineChartProps) {
     setHighlightDataset,
     setPointOfInterest,
   } = props;
+
+  const chartRef = useRef<ChartJS<"line", number[] | number[][], unknown> | null>(null);
+
+  useEffect(() => {
+    if (chartRef.current) {
+      chartRef.current.update(); // Ensure chart updates when props change
+    }
+  }, [highlightDataset, data]);
 
   // Handle both single and multiple datasets
   const isMultipleDatasets = Array.isArray(data[0]);
@@ -393,7 +469,7 @@ function FunctionValueLineChart(props: FunctionValueLineChartProps) {
 
   return (
     <div style={{ width: 600}}>
-      <Line data={chartData} options={options} plugins={inlinePlugins} />
+      <Line ref={chartRef} data={chartData} options={options} plugins={inlinePlugins}/>
     </div>
   );
 }
