@@ -210,7 +210,10 @@ function crosshairHighlightPlugin(setPointOfInterest?: ((point : {x: number, y: 
         event.type === "click" ||
         (event.type === "mousemove" &&
           nativeEvent instanceof MouseEvent &&
-          nativeEvent.buttons === 1)
+          nativeEvent.buttons === 1) ||
+        (event.type === "mousemove" &&
+          nativeEvent instanceof TouchEvent &&
+          nativeEvent.touches && nativeEvent.touches.length > 0)
       ) {
         chart._lastPointOfInterest = { x: closestPoint.dataX, y: closestPoint.dataY };
         if (setPointOfInterest) {
