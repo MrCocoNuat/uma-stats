@@ -12,7 +12,7 @@ export default function Gacha(){
     // Lift gachaType state to parent
     const [gachaType, setGachaType] = useState<GachaType>(GachaType.SUPPORT_CARD);
 
-    return <div className="flex flex-col items-center w-full mx-4">
+    return <div className="flex flex-col items-center w-full mx-4 h-full">
         <div className="flex flex-col gap-4 items-center w-full max-w-sm md:max-w-md">
             <GachaTypeSelector gachaType={gachaType} setGachaType={setGachaType} />
             <RateEditor rates={pullRates} setPullRates={setPullRates} />
