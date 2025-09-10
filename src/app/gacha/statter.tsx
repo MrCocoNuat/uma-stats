@@ -72,7 +72,7 @@ function SupportCardPoiDisplay({pointOfInterest, desiredBreaks, setDesiredBreaks
             {Array.from({ length: MAX_BREAKS + 1 }, (_, i) => (
                 <button
                 key={i}
-                className={`px-2 py-1 rounded border ${desiredBreaks === i ? "bg-blue-100 border-blue-500" : "bg-white border-gray-300"} flex items-center`}
+                className={`px-2 py-1 rounded border ${desiredBreaks === i ? "bg-blue-900 border-blue-500" : "border-gray-300"} flex items-center`}
                 onClick={() => setDesiredBreaks(i)}
                 aria-label={`Set desired breaks to ${i}`}
                 type="button"
@@ -80,13 +80,13 @@ function SupportCardPoiDisplay({pointOfInterest, desiredBreaks, setDesiredBreaks
                 {Array.from({ length: MAX_BREAKS }, (_, j) =>
                     j < i ? (
                     // filled blue vertical rhombus
-                    <svg key={j} width="16" height="16" viewBox="0 0 16 16" className="mx-0.5" aria-hidden="true">
-                        <polygon points="8,2 14,8 8,14 2,8" fill="#2563eb" stroke="#2563eb" strokeWidth="1"/>
+                    <svg key={j} width="8" height="16" viewBox="0 0 8 16" className="mx-0.5" aria-hidden="true">
+                        <polygon points="4,2 8,8 4,14 0,8" fill="#2563eb" stroke="#2563eb" strokeWidth="1"/>
                     </svg>
                     ) : (
                     // empty rhombus
-                    <svg key={j} width="16" height="16" viewBox="0 0 16 16" className="mx-0.5" aria-hidden="true">
-                        <polygon points="8,2 14,8 8,14 2,8" fill="none" stroke="#2563eb" strokeWidth="1"/>
+                    <svg key={j} width="8" height="16" viewBox="0 0 8 16" className="mx-0.5" aria-hidden="true">
+                        <polygon points="4,2 8,8 4,14 0,8" fill="none" stroke="#2563eb" strokeWidth="1"/>
                     </svg>
                     )
                 )}
@@ -95,7 +95,7 @@ function SupportCardPoiDisplay({pointOfInterest, desiredBreaks, setDesiredBreaks
             </div>
             {pointOfInterest ? (
             <div className="flex flex-col">
-                <p>Probability of achieving the desired result in {pointOfInterest.x} pulls is {(pointOfInterest.y * 100).toFixed(2)}%</p>
+                <p>Probability of the desired result in {pointOfInterest.x} pulls is {(pointOfInterest.y * 100).toFixed(2)}%</p>
             </div>
             ) : (
             <p>No point of interest selected.</p>
