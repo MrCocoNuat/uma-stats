@@ -186,28 +186,18 @@ function crosshairHighlightPlugin(setPointOfInterest?: ((point : {x: number, y: 
       const datasetMeta = chart.getDatasetMeta(highlightDataset);
       if (!datasetMeta || !datasetMeta.data || datasetMeta.data.length === 0) return;
 
-      // Build a map from data x to point (cache on meta for perf)
-      const metaWithMap = datasetMeta as typeof datasetMeta & { _xPointMap?: Record<number, { dataIndex: number, dataX: number, dataY: number }> };
-      if (!metaWithMap._xPointMap) {
-        metaWithMap._xPointMap = {};
-        const dataset = chart.data.datasets[highlightDataset].data as number[];
-        for (let i = 0; i < datasetMeta.data.length; ++i) {
-          const dataX = Number(chart.data.labels ? chart.data.labels[i] : i + 1);
-          const dataY = dataset[i];
-          metaWithMap._xPointMap[dataX] = { dataIndex: i, dataX, dataY };
-        }
-      }
-      const xPointMap = metaWithMap._xPointMap;
       // Find the closest point by data x
       let closestPoint: { dataIndex: number, dataX: number, dataY: number } | null = null;
       if (typeof mouseDataX === "number") {
         let minDist = Infinity;
-        for (const key in xPointMap) {
-          const px = Number(key);
-          const dist = Math.abs(px - mouseDataX);
+        const dataset = chart.data.datasets[highlightDataset].data as number[];
+        for (let i = 0; i < datasetMeta.data.length; ++i) {
+          const dataX = Number(chart.data.labels ? chart.data.labels[i] : i + 1);
+          const dataY = dataset[i];
+          const dist = Math.abs(dataX - mouseDataX);
           if (dist < minDist) {
-            minDist = dist;
-            closestPoint = xPointMap[key];
+        minDist = dist;
+        closestPoint = { dataIndex: i, dataX, dataY };
           }
         }
       }
@@ -236,6 +226,7 @@ function crosshairHighlightPlugin(setPointOfInterest?: ((point : {x: number, y: 
     },
     afterDraw(chart: Chart & { _crosshairOverlayCanvas?: HTMLCanvasElement, _lastPointOfInterest?: { x: number, y: number }, _highlightDataset?: number, _lastMousePosition?: {x: number, y: number} }) {
       // Draw animated crosshair on every frame
+      console.debug("afterDraw crosshairHighlight");
       const overlay: HTMLCanvasElement | undefined = chart._crosshairOverlayCanvas;
       if (!overlay) return;
       const ctx = overlay.getContext("2d");
@@ -309,17 +300,6 @@ function crosshairHighlightPlugin(setPointOfInterest?: ((point : {x: number, y: 
         // Find the dataset to highlight
         const datasetMeta = chart.getDatasetMeta(highlightDataset);
         if (!datasetMeta || !datasetMeta.data || datasetMeta.data.length === 0) return;
-
-        // Build a map from data x to point (cache on meta for perf)
-        const metaWithMap = datasetMeta as typeof datasetMeta & { _xPointMap?: Record<number, { dataIndex: number, dataX: number, dataY: number }> };
-        metaWithMap._xPointMap = {};
-        const dataset = chart.data.datasets[highlightDataset].data as number[];
-        for (let i = 0; i < datasetMeta.data.length; ++i) {
-          const dataX = Number(chart.data.labels ? chart.data.labels[i] : i + 1);
-          const dataY = dataset[i];
-          metaWithMap._xPointMap[dataX] = { dataIndex: i, dataX, dataY };
-        }
-        const xPointMap = metaWithMap._xPointMap;
 
         // Find the closest point by data x
         let closestPoint: { dataIndex: number, dataX: number, dataY: number } | null = null;
