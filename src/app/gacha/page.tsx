@@ -12,13 +12,14 @@ export default function Gacha(){
     // Lift gachaType state to parent
     const [gachaType, setGachaType] = useState<GachaType>(GachaType.SUPPORT_CARD);
 
-    return <div className="flex flex-col items-center">
-        <GachaTypeSelector gachaType={gachaType} setGachaType={setGachaType} />
-        <RateEditor rates={pullRates} setPullRates={setPullRates} />
-        <GachaStatter pullRates={pullRates} gachaType={gachaType}/>
-        <GachaSimulator pullRates={pullRates} gachaType={gachaType}/>
-
+    return <div className="flex flex-col items-center w-full mx-4">
+        <div className="flex flex-col gap-4 items-center w-full max-w-sm md:max-w-md">
+            <GachaTypeSelector gachaType={gachaType} setGachaType={setGachaType} />
+            <RateEditor rates={pullRates} setPullRates={setPullRates} />
+            <GachaStatter pullRates={pullRates} gachaType={gachaType}/>
+            <GachaSimulator pullRates={pullRates} gachaType={gachaType}/>
         </div>
+    </div>
     }
 
 // ctor from PullRates by taking the first entry of 1-pull rates
@@ -81,11 +82,11 @@ function RateEditor({ rates, setPullRates: setRates }: { rates: PullRates, setPu
         { key: Rarity.SSR_FOCUS, label: "SSR Focus", writable: true },
         { key: Rarity.SR, label: "SR", writable: true },
         { key: Rarity.SR_FOCUS, label: "SR Focus", writable: true },
-        { key: Rarity.R, label: "R", writable: false },
+        // { key: Rarity.R, label: "R", writable: false },
     ];
 
     return (
-        <div className="border-1 mb-4 p-4 flex flex-col">
+        <div className="border-1 p-4 flex flex-col">
             <div>
                 <h2 className="text-2xl font-bold mb-4">Edit Rates</h2>
                 <div className="flex gap-2 mb-2">
@@ -105,7 +106,7 @@ function RateEditor({ rates, setPullRates: setRates }: { rates: PullRates, setPu
                     ))}
                 </div>
                 <div className="self-end text-sm text-gray-500 italic">
-                    Note: R rate is auto-calculated as the remainder from 100%
+                    Note: R rate is calculated as the remainder from 100%
                 </div>
                 {error && <div className="text-red-600 text-sm">{error}</div>}
             </div>
@@ -152,7 +153,7 @@ function RateEditor({ rates, setPullRates: setRates }: { rates: PullRates, setPu
 
 function GachaTypeSelector({ gachaType, setGachaType }: { gachaType: GachaType, setGachaType: (type: GachaType) => void }) {
     return (
-        <div className="mb-4 border-1 flex flex-col items-center w-md"> 
+        <div className="border-1 flex flex-col items-center w-full"> 
             <div className="flex justify-center gap-2 w-full">
                 {[{ type: GachaType.TRAINEE, label: "Trainee" }, { type: GachaType.SUPPORT_CARD, label: "Support Card" }].map(({ type, label }) => {
                     const selected = gachaType === type;
@@ -161,7 +162,7 @@ function GachaTypeSelector({ gachaType, setGachaType }: { gachaType: GachaType, 
                             key={type}
                             type="button"
                             className={
-                                "p-2 rounded transition-colors w-full " +
+                                "p-2 rounded transition-bg w-full " +
                                 (selected
                                     ? "bg-gradient-to-br from-red-700 to-green-700 text-white"
                                     : "bg-gradient-to-br text-white hover:from-green-800 hover:to-blue-800 border border-gray-700")

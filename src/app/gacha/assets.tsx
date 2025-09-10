@@ -42,7 +42,7 @@ export function GachaPrize({ gachaType, rarity }: { gachaType : GachaType, rarit
     // SUPPORT_CARD: Tailwind diagonal gradient background (no border on inner div)
     if (isSSR && gachaType === GachaType.SUPPORT_CARD) {
         return (
-            <div className="p-1 rounded h-20 aspect-square bg-gradient-to-br from-violet-400 via-blue-300 to-green-400 shadow-[0_0_8px_white]">
+            <div className="p-1 rounded h-16 md:h-20 aspect-square bg-gradient-to-br from-violet-400 via-blue-300 to-green-400 shadow-[0_0_8px_white]">
                 <div className="p-0 flex flex-col h-full aspect-square items-center justify-center text-center bg-gradient-to-br from-violet-800 via-blue-800 to-green-800">
                     <span className="text-xl font-bold text-shadow-[0_0_2px_black,0_0_4px_yellow]">{names[gachaType][rarity]}</span>
                     {isFocus && <BannerFocusBadge />}
@@ -54,7 +54,7 @@ export function GachaPrize({ gachaType, rarity }: { gachaType : GachaType, rarit
     if (isSSR && gachaType === GachaType.TRAINEE) {
         return (
             <div
-                className="p-1 rounded h-20 aspect-square shadow-[0_0_8px_white]"
+                className="p-1 rounded h-16 md:h-20 aspect-square shadow-[0_0_8px_white]"
                 style={{
                     background:
                         "conic-gradient(from 225deg at 50% 50%, #a78bfa 0deg, #60a5fa 60deg, #4ade80 120deg, #fbbf24 210deg, #f472b6 300deg, #a78bfa 360deg)",
@@ -77,7 +77,7 @@ export function GachaPrize({ gachaType, rarity }: { gachaType : GachaType, rarit
     // All other rarities: normal Tailwind color classes
     return (
         <div
-            className={`p-0 flex flex-col h-20 aspect-square items-center justify-center border-4 rounded text-center ${baseColorClasses[gachaType][rarity as Exclude<Rarity, Rarity.SSR | Rarity.SSR_FOCUS>]}`}
+            className={`p-0 flex flex-col h-16 md:h-20 aspect-square items-center justify-center border-4 rounded text-center ${baseColorClasses[gachaType][rarity as Exclude<Rarity, Rarity.SSR | Rarity.SSR_FOCUS>]}`}
         >
             <span className="text-xl font-bold text-shadow-[0_0_1px_black,0_0_2px_yellow]">{names[gachaType][rarity as Exclude<Rarity, Rarity.SSR | Rarity.SSR_FOCUS>]}</span>
             {isFocus && <BannerFocusBadge />}

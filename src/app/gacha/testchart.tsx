@@ -525,7 +525,7 @@ function FunctionValueLineChart(props: FunctionValueLineChartProps) {
   };
 
   return (
-    <div className="w-[400px] md:w-[600px] relative">
+    <div className="relative">
       <Line ref={chartRef} data={chartData} options={options} plugins={inlinePlugins}/>
     </div>
   );

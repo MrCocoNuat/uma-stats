@@ -9,7 +9,7 @@ export default function GachaSimulator(
         {pullRates, gachaType}: {pullRates: PullRates, gachaType: GachaType}
 ){
     return (
-        <div className="p-4 mb-4 border flex flex-col items-center">
+        <div className="border flex flex-col items-center">
             <h2 className="text-2xl font-bold">Simulator</h2>
             <Puller gachaType={gachaType} pullRates={pullRates} />
         </div>

@@ -124,7 +124,7 @@ export default function GachaStatter({pullRates, gachaType} : {pullRates: PullRa
         if (handlePoiRef.current) handlePoiRef.current(point);
     };
     return (
-        <div className="p-4 mb-4 border flex flex-col">
+        <div className="border flex flex-col w-full">
             <StatGraph pullRates={pullRates} setPointOfInterest={handleNewPoi} applySparks={applySparks} desiredBreaks={desiredBreaks} setDesiredBreaks={setDesiredBreaks}/>
             <div className="flex flex-col">
                 <PointOfInterestDisplay setHandlePoi={setHandlePoi} gachaType={gachaType} desiredBreaks={desiredBreaks} setDesiredBreaks={setDesiredBreaks} applySparks={applySparks} setApplySparks={setApplySparks} pullRates={pullRates} />
@@ -170,7 +170,5 @@ function StatGraph({pullRates, setPointOfInterest, applySparks, desiredBreaks, s
         );
     }, [ssrFocusProb, applySparks]);
     
-    return <div>
-        <MemoizedFunctionValueLineChart xLabel={"Number of Pulls"} data={distributions} highlightDataset={desiredBreaks} setHighlightDataset={setDesiredBreaks} setPointOfInterest={setPointOfInterest}/>
-    </div>
+    return <MemoizedFunctionValueLineChart xLabel={"Number of Pulls"} data={distributions} highlightDataset={desiredBreaks} setHighlightDataset={setDesiredBreaks} setPointOfInterest={setPointOfInterest}/>
 }
