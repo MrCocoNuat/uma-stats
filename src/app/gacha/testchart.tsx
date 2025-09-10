@@ -346,6 +346,7 @@ function crosshairHighlightPlugin(setPointOfInterest?: ((point : {x: number, y: 
 
   function drawCrosshairs(ctx: CanvasRenderingContext2D, dataPoint: {x: number, y: number}, chartArea : ChartArea, chart: Chart) {
     // Convert data values to pixel values for drawing
+    const dpr = window.devicePixelRatio || 1;
     const px = chart.scales.x.getPixelForValue(dataPoint.x);
     const py = chart.scales.y.getPixelForValue(dataPoint.y);
     if (!Number.isFinite(px) || !Number.isFinite(py)) {
@@ -353,7 +354,7 @@ function crosshairHighlightPlugin(setPointOfInterest?: ((point : {x: number, y: 
     }
     ctx.save();
     ctx.beginPath();
-    ctx.arc(px, py, 6, 0, 2 * Math.PI);
+    ctx.arc(px * dpr, py * dpr, 6 * dpr, 0, 2 * Math.PI);
     ctx.fillStyle = "red";
     ctx.fill();
     ctx.restore();
@@ -361,17 +362,17 @@ function crosshairHighlightPlugin(setPointOfInterest?: ((point : {x: number, y: 
     // Draw crosshair lines to axes
     ctx.save();
     ctx.strokeStyle = "rgba(200,0,0,0.5)";
-    ctx.lineWidth = 3;
-    ctx.setLineDash([4, 4]);
+    ctx.lineWidth = 3 * dpr;
+    ctx.setLineDash([4 * dpr, 4 * dpr]);
     // Vertical to x-axis
     ctx.beginPath();
-    ctx.moveTo(px, py);
-    ctx.lineTo(px, chartArea.bottom);
+    ctx.moveTo(px * dpr, py * dpr);
+    ctx.lineTo(px * dpr, chartArea.bottom * dpr);
     ctx.stroke();
     // Horizontal to y-axis
     ctx.beginPath();
-    ctx.moveTo(chartArea.left, py);
-    ctx.lineTo(px, py);
+    ctx.moveTo(chartArea.left * dpr, py * dpr);
+    ctx.lineTo(px * dpr, py * dpr);
     ctx.stroke();
     ctx.restore();
   }
