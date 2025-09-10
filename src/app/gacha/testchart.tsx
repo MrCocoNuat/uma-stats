@@ -20,10 +20,7 @@ import { time } from "console";
 ChartJS.register(
   LineElement,
   PointElement,
-  CategoryScale,
   LinearScale,
-  Tooltip,
-  Legend
 );
 
 // Extend Chart.js types to include crosshairHighlight plugin options
@@ -109,15 +106,13 @@ function datasetClickPlugin(setHighlightDataset: ((index: number) => void)) {
         return;
       }
 
-      if (!setHighlightDataset) return;
-
       if (
         closestDatasetIdx !== null &&
         closestDatasetIdx !== highlightDataset
       ) {
-        console.debug("Switching highlighted dataset to", closestDatasetIdx);
         setHighlightDataset(closestDatasetIdx);
-        chart._highlightDataset = closestDatasetIdx; // Optional: share with other plugins
+        
+        chart.update();
 
         // Clear last clicked point for previous highlighted dataset
         const highlightDatasetMeta = chart.getDatasetMeta(highlightDataset);
@@ -152,7 +147,7 @@ function crosshairHighlightPlugin(setPointOfInterest?: ((point : {x: number, y: 
       }
     },
     //TODO: ignore mousein and mouseout, don't clear drawing area on those
-    afterEvent: (chart: Chart  & {_crosshairOverlayCanvas? : HTMLCanvasElement, _lastPointOfInterest?: {x: number, y: number}, _highlightDataset?: number }, args: { event: ChartEvent }) => {
+    afterEvent: (chart: Chart  & {_crosshairOverlayCanvas? : HTMLCanvasElement, _lastPointOfInterest?: {x: number, y: number}, _highlightDataset?: number, _lastMousePosition?: {x: number, y: number} }, args: { event: ChartEvent }) => {
       // Get overlay canvas and context
       const overlay: HTMLCanvasElement | undefined = chart._crosshairOverlayCanvas;
       if (!overlay) return;
@@ -162,26 +157,26 @@ function crosshairHighlightPlugin(setPointOfInterest?: ((point : {x: number, y: 
       const { chartArea } = chart;
       const { event } = args;
       
+      if (event.type === "mouseenter" || event.type === "mouseout") {
+        // leave the crosshair as is on mousein/mouseout
+        return;
+      }
+      if (!event || !event.x || !event.y) {
+        return;
+      }
+
+      // Track the last mouse position for afterDraw
+      chart._lastMousePosition = { x: event.x, y: event.y };
+
       // Clear overlay before drawing new crosshairs to avoid artifacts.
       ctx.clearRect(0, 0, overlay.width, overlay.height);
-
       // Redraw last point of interest if present (e.g. after resize)
       if (chart._lastPointOfInterest) {
         const lastPoint = chart._lastPointOfInterest;
         drawCrosshairs(ctx, {x: lastPoint.x, y: lastPoint.y} as PointElement, chartArea);
       }
-      if (event.type === "mouseenter" || event.type === "mouseout") {
-        console.debug("Ignoring event type " + event.type);
-        // leave the crosshair as is on mousein/mouseout
-        return;
-      }
-      if (!event || !event.x || !event.y) {
-        console.debug("No event or event position, clearing crosshair:" + event);
-        ctx.clearRect(0, 0, overlay.width, overlay.height);
-        return;
-      }
 
-      const { x: mouseX, y: mouseY } = getRelativePosition(event, chart);
+      const { x: mouseX } = getRelativePosition(event, chart);
 
       // Find the highlighted dataset index (or default to 0)
       const highlightDataset =
@@ -210,7 +205,6 @@ function crosshairHighlightPlugin(setPointOfInterest?: ((point : {x: number, y: 
       let closestPoint: { dataIndex: number, x: number, y: number } | null = null;
       if (typeof mouseX === "number") {
         const rx = Math.round(mouseX);
-        //TODO: something like         const mouseXData = chart.scales.x.getValueForPixel(mouseX); might work for sub-pixel accuracy
         // Try up to 5 px away if not found
         for (let offset = 0; offset <= 5; ++offset) {
           if (xPointMap[rx + offset]) {
@@ -236,7 +230,6 @@ function crosshairHighlightPlugin(setPointOfInterest?: ((point : {x: number, y: 
       ) {
         chart._lastPointOfInterest = { x: closestPoint.x, y: closestPoint.y };
         if (setPointOfInterest) {
-          console.debug("Setting point of interest to", closestPoint);
           // Convert back to data values for callback
           const dataIndex = closestPoint.dataIndex;
           const dataX = chart.data.labels ? chart.data.labels[dataIndex] : dataIndex + 1;
@@ -252,14 +245,15 @@ function crosshairHighlightPlugin(setPointOfInterest?: ((point : {x: number, y: 
       // Highlight the mouse point
       drawCrosshairs(ctx, { x: closestPoint.x, y: closestPoint.y } as PointElement, chartArea);
     },
-    afterDraw(chart: Chart & { _crosshairOverlayCanvas?: HTMLCanvasElement, _lastPointOfInterest?: { x: number, y: number }, _highlightDataset?: number }) {
+    afterDraw(chart: Chart & { _crosshairOverlayCanvas?: HTMLCanvasElement, _lastPointOfInterest?: { x: number, y: number }, _highlightDataset?: number, _lastMousePosition?: {x: number, y: number} }) {
       // Draw animated crosshair on every frame
       const overlay: HTMLCanvasElement | undefined = chart._crosshairOverlayCanvas;
       if (!overlay) return;
       const ctx = overlay.getContext("2d");
       if (!ctx) return;
-      ctx.clearRect(0, 0, overlay.width, overlay.height);
       if (!chart._lastPointOfInterest) return;
+      
+      ctx.clearRect(0, 0, overlay.width, overlay.height);
       // Use the lastPointOfInterest.x to find the closest animated point
       const highlightDataset = chart._highlightDataset ?? chart.options.plugins?.crosshairHighlight?.highlightDataset ?? 0;
       const datasetMeta = chart.getDatasetMeta(highlightDataset);
@@ -267,7 +261,6 @@ function crosshairHighlightPlugin(setPointOfInterest?: ((point : {x: number, y: 
       // Find the closest animated point by x
       let closestPoint: PointElement | null = null;
       let minDist = Infinity;
-      //TODO: kind of inefficient to loop through all points every frame, but datasets are small? Optimize later if needed
       for (const point of datasetMeta.data) {
         const dist = Math.abs(point.x - chart._lastPointOfInterest.x);
         if (dist < minDist) {
@@ -275,8 +268,25 @@ function crosshairHighlightPlugin(setPointOfInterest?: ((point : {x: number, y: 
           closestPoint = point as PointElement;
         }
       }
-      if (closestPoint) {
+      if (closestPoint && Number.isFinite(closestPoint.x) && Number.isFinite(closestPoint.y)) {
         drawCrosshairs(ctx, closestPoint, chart.chartArea);
+      }
+      // Also redraw the crosshair at the mouse position if available
+      if (chart._lastMousePosition) {
+        const { x: mouseX } = chart._lastMousePosition;
+        // Find the closest point by rounded x
+        let mouseClosestPoint: PointElement | null = null;
+        let minMouseDist = Infinity;
+        for (const point of datasetMeta.data) {
+          const dist = Math.abs(point.x - mouseX);
+          if (dist < minMouseDist) {
+            minMouseDist = dist;
+            mouseClosestPoint = point as PointElement;
+          }
+        }
+        if (mouseClosestPoint && Number.isFinite(mouseClosestPoint.x) && Number.isFinite(mouseClosestPoint.y)) {
+          drawCrosshairs(ctx, mouseClosestPoint, chart.chartArea);
+        }
       }
     },
     afterUpdate(chart : Chart & {_crosshairOverlayCanvas? : HTMLCanvasElement, _lastPointOfInterest?: {x: number, y: number}, _highlightDataset?: number }) {
@@ -286,7 +296,7 @@ function crosshairHighlightPlugin(setPointOfInterest?: ((point : {x: number, y: 
       // props might have changed! the cache map needs to be recalculated,
       // the highlight dataset checked,
       // and the overlay redrawn if necessary. Keep the x coordinate of the last point of interest, but recalculate and redraw y
-
+      console.log("afterUpdate crosshairHighlight");
       const overlay: HTMLCanvasElement | undefined = chart._crosshairOverlayCanvas;
       if (!overlay) return;
       const ctx = overlay.getContext("2d");
@@ -376,8 +386,6 @@ function crosshairHighlightPlugin(setPointOfInterest?: ((point : {x: number, y: 
     ctx.beginPath();
     ctx.arc(closestPoint.x, closestPoint.y, 6, 0, 2 * Math.PI);
     ctx.fillStyle = "red";
-    ctx.shadowColor = "black";
-    ctx.shadowBlur = 6;
     ctx.fill();
     ctx.restore();
 
@@ -441,7 +449,7 @@ function FunctionValueLineChart(props: FunctionValueLineChartProps) {
   const inlinePlugins = [];
   if (setHighlightDataset) {
     inlinePlugins.push(datasetClickPlugin(setHighlightDataset));
-    inlinePlugins.push(crosshairHighlightPlugin(setPointOfInterest)); // order matters
+    inlinePlugins.push(crosshairHighlightPlugin(setPointOfInterest));
   }
 
   // If no labels provided, use [1, 2, 3, ...]
@@ -481,12 +489,6 @@ function FunctionValueLineChart(props: FunctionValueLineChartProps) {
       duration: 500,
     },
     plugins: {
-      legend: {
-        display: false,
-      },
-      tooltip: {
-        enabled: false,
-      },
       crosshairHighlight: {
         highlightDataset: highlightDataset ?? 0,
       },
