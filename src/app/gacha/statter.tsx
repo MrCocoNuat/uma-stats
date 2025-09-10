@@ -80,12 +80,12 @@ function SupportCardPoiDisplay({pointOfInterest, desiredBreaks, setDesiredBreaks
                 {Array.from({ length: MAX_BREAKS }, (_, j) =>
                     j < i ? (
                     // filled blue vertical rhombus
-                    <svg key={j} width="8" height="16" viewBox="0 0 8 16" className="mx-0.5" aria-hidden="true">
+                    <svg key={j} width="8" height="16" viewBox="0 0 8 16" className="mx-0.25" aria-hidden="true">
                         <polygon points="4,2 8,8 4,14 0,8" fill="#2563eb" stroke="#2563eb" strokeWidth="1"/>
                     </svg>
                     ) : (
                     // empty rhombus
-                    <svg key={j} width="8" height="16" viewBox="0 0 8 16" className="mx-0.5" aria-hidden="true">
+                    <svg key={j} width="8" height="16" viewBox="0 0 8 16" className="mx-0.25" aria-hidden="true">
                         <polygon points="4,2 8,8 4,14 0,8" fill="none" stroke="#2563eb" strokeWidth="1"/>
                     </svg>
                     )
