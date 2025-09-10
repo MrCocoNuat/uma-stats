@@ -243,7 +243,7 @@ function crosshairHighlightPlugin(setPointOfInterest?: ((point : {x: number, y: 
       const dataset = chart.data.datasets[highlightDataset].data as number[];
       for (let i = 0; i < datasetMeta.data.length; ++i) {
         const dataX = Number(chart.data.labels ? chart.data.labels[i] : i + 1);
-        const dataY = dataset[i];
+        const dataY = chart.scales.y.getValueForPixel(datasetMeta.data[i].y) as number;
         const dist = Math.abs(dataX - chart._lastPointOfInterest.x);
         if (dist < minDist) {
           minDist = dist;
@@ -260,7 +260,7 @@ function crosshairHighlightPlugin(setPointOfInterest?: ((point : {x: number, y: 
         let minMouseDist = Infinity;
         for (let i = 0; i < datasetMeta.data.length; ++i) {
           const dataX = Number(chart.data.labels ? chart.data.labels[i] : i + 1);
-          const dataY = dataset[i];
+        const dataY = chart.scales.y.getValueForPixel(datasetMeta.data[i].y) as number;
           const dist = Math.abs(dataX - chart._lastMousePosition.x);
           if (dist < minMouseDist) {
             minMouseDist = dist;
