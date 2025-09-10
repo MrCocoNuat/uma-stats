@@ -146,7 +146,6 @@ function crosshairHighlightPlugin(setPointOfInterest?: ((point : {x: number, y: 
         chart._crosshairOverlayCanvas = overlay;
       }
     },
-    //TODO: ignore mousein and mouseout, don't clear drawing area on those
     afterEvent: (chart: Chart  & {_crosshairOverlayCanvas? : HTMLCanvasElement, _lastPointOfInterest?: {x: number, y: number}, _highlightDataset?: number, _lastMousePosition?: {x: number, y: number} }, args: { event: ChartEvent }) => {
       // Get overlay canvas and context
       const overlay: HTMLCanvasElement | undefined = chart._crosshairOverlayCanvas;
@@ -165,18 +164,18 @@ function crosshairHighlightPlugin(setPointOfInterest?: ((point : {x: number, y: 
         return;
       }
 
-      // Track the last mouse position for afterDraw
-      chart._lastMousePosition = { x: event.x, y: event.y };
+      // Track the last mouse position for afterDraw (store as data value)
+      const mouseDataX = chart.scales.x.getValueForPixel(event.x) ?? 0;
+      const mouseDataY = chart.scales.y.getValueForPixel(event.y) ?? 0;
+      chart._lastMousePosition = { x: mouseDataX, y: mouseDataY };
 
       // Clear overlay before drawing new crosshairs to avoid artifacts.
       ctx.clearRect(0, 0, overlay.width, overlay.height);
       // Redraw last point of interest if present (e.g. after resize)
       if (chart._lastPointOfInterest) {
         const lastPoint = chart._lastPointOfInterest;
-        drawCrosshairs(ctx, {x: lastPoint.x, y: lastPoint.y} as PointElement, chartArea);
+        drawCrosshairs(ctx, lastPoint, chartArea, chart);
       }
-
-      const { x: mouseX } = getRelativePosition(event, chart);
 
       // Find the highlighted dataset index (or default to 0)
       const highlightDataset =
@@ -187,39 +186,34 @@ function crosshairHighlightPlugin(setPointOfInterest?: ((point : {x: number, y: 
       const datasetMeta = chart.getDatasetMeta(highlightDataset);
       if (!datasetMeta || !datasetMeta.data || datasetMeta.data.length === 0) return;
 
-      // Build a map from rounded x to point (cache on meta for perf)
-      const metaWithMap = datasetMeta as typeof datasetMeta & { _xPointMap?: Record<number, { dataIndex: number, x: number, y: number }> };
+      // Build a map from data x to point (cache on meta for perf)
+      const metaWithMap = datasetMeta as typeof datasetMeta & { _xPointMap?: Record<number, { dataIndex: number, dataX: number, dataY: number }> };
       if (!metaWithMap._xPointMap) {
         metaWithMap._xPointMap = {};
         const dataset = chart.data.datasets[highlightDataset].data as number[];
         for (let i = 0; i < datasetMeta.data.length; ++i) {
-          const dataX = chart.data.labels ? chart.data.labels[i] : i + 1;
-          const px = Math.round(chart.scales.x.getPixelForValue(Number(dataX)));
-          const py = chart.scales.y.getPixelForValue(dataset[i]);
-          metaWithMap._xPointMap[px] = { dataIndex: i, x: px, y: py };
+          const dataX = Number(chart.data.labels ? chart.data.labels[i] : i + 1);
+          const dataY = dataset[i];
+          metaWithMap._xPointMap[dataX] = { dataIndex: i, dataX, dataY };
         }
       }
       const xPointMap = metaWithMap._xPointMap;
-
-      // Find the closest point by rounded x
-      let closestPoint: { dataIndex: number, x: number, y: number } | null = null;
-      if (typeof mouseX === "number") {
-        const rx = Math.round(mouseX);
-        // Try up to 5 px away if not found
-        for (let offset = 0; offset <= 5; ++offset) {
-          if (xPointMap[rx + offset]) {
-            closestPoint = xPointMap[rx + offset];
-            break;
-          }
-          if (xPointMap[rx - offset]) {
-            closestPoint = xPointMap[rx - offset];
-            break;
+      // Find the closest point by data x
+      let closestPoint: { dataIndex: number, dataX: number, dataY: number } | null = null;
+      if (typeof mouseDataX === "number") {
+        let minDist = Infinity;
+        for (const key in xPointMap) {
+          const px = Number(key);
+          const dist = Math.abs(px - mouseDataX);
+          if (dist < minDist) {
+            minDist = dist;
+            closestPoint = xPointMap[key];
           }
         }
       }
       if (!closestPoint) return;
 
-      // Store last point of interest at chart level
+      // Store last point of interest at chart level (as data values)
       // Fire on click or while main mouse button is held down (drag)
       const nativeEvent = event.native;
       if (
@@ -228,22 +222,17 @@ function crosshairHighlightPlugin(setPointOfInterest?: ((point : {x: number, y: 
           nativeEvent instanceof MouseEvent &&
           nativeEvent.buttons === 1)
       ) {
-        chart._lastPointOfInterest = { x: closestPoint.x, y: closestPoint.y };
+        chart._lastPointOfInterest = { x: closestPoint.dataX, y: closestPoint.dataY };
         if (setPointOfInterest) {
-          // Convert back to data values for callback
-          const dataIndex = closestPoint.dataIndex;
-          const dataX = chart.data.labels ? chart.data.labels[dataIndex] : dataIndex + 1;
-          const dataY = (chart.data.datasets[highlightDataset].data as number[])[dataIndex];
-          setPointOfInterest({ x: Number(dataX), y: dataY });
+          setPointOfInterest({ x: closestPoint.dataX, y: closestPoint.dataY });
         }
       } else if (!chart._lastPointOfInterest) {
         if (setPointOfInterest) {
           setPointOfInterest(null);
         }
       }
-
       // Highlight the mouse point
-      drawCrosshairs(ctx, { x: closestPoint.x, y: closestPoint.y } as PointElement, chartArea);
+      drawCrosshairs(ctx, { x: closestPoint.dataX, y: closestPoint.dataY }, chartArea, chart);
     },
     afterDraw(chart: Chart & { _crosshairOverlayCanvas?: HTMLCanvasElement, _lastPointOfInterest?: { x: number, y: number }, _highlightDataset?: number, _lastMousePosition?: {x: number, y: number} }) {
       // Draw animated crosshair on every frame
@@ -252,40 +241,43 @@ function crosshairHighlightPlugin(setPointOfInterest?: ((point : {x: number, y: 
       const ctx = overlay.getContext("2d");
       if (!ctx) return;
       if (!chart._lastPointOfInterest) return;
-      
       ctx.clearRect(0, 0, overlay.width, overlay.height);
-      // Use the lastPointOfInterest.x to find the closest animated point
+      // Use the lastPointOfInterest (data values) to find the closest animated point
       const highlightDataset = chart._highlightDataset ?? chart.options.plugins?.crosshairHighlight?.highlightDataset ?? 0;
       const datasetMeta = chart.getDatasetMeta(highlightDataset);
       if (!datasetMeta || !datasetMeta.data || datasetMeta.data.length === 0) return;
-      // Find the closest animated point by x
-      let closestPoint: PointElement | null = null;
+      // Find the closest animated point by data x
+      let closestPoint: { dataIndex: number, dataX: number, dataY: number } | null = null;
       let minDist = Infinity;
-      for (const point of datasetMeta.data) {
-        const dist = Math.abs(point.x - chart._lastPointOfInterest.x);
+      const dataset = chart.data.datasets[highlightDataset].data as number[];
+      for (let i = 0; i < datasetMeta.data.length; ++i) {
+        const dataX = Number(chart.data.labels ? chart.data.labels[i] : i + 1);
+        const dataY = dataset[i];
+        const dist = Math.abs(dataX - chart._lastPointOfInterest.x);
         if (dist < minDist) {
           minDist = dist;
-          closestPoint = point as PointElement;
+          closestPoint = { dataIndex: i, dataX, dataY };
         }
       }
-      if (closestPoint && Number.isFinite(closestPoint.x) && Number.isFinite(closestPoint.y)) {
-        drawCrosshairs(ctx, closestPoint, chart.chartArea);
+      if (closestPoint) {
+        drawCrosshairs(ctx, { x: closestPoint.dataX, y: closestPoint.dataY }, chart.chartArea, chart);
       }
       // Also redraw the crosshair at the mouse position if available
       if (chart._lastMousePosition) {
-        const { x: mouseX } = chart._lastMousePosition;
-        // Find the closest point by rounded x
-        let mouseClosestPoint: PointElement | null = null;
+        // Find the closest point by data x
+        let mouseClosestPoint: { dataIndex: number, dataX: number, dataY: number } | null = null;
         let minMouseDist = Infinity;
-        for (const point of datasetMeta.data) {
-          const dist = Math.abs(point.x - mouseX);
+        for (let i = 0; i < datasetMeta.data.length; ++i) {
+          const dataX = Number(chart.data.labels ? chart.data.labels[i] : i + 1);
+          const dataY = dataset[i];
+          const dist = Math.abs(dataX - chart._lastMousePosition.x);
           if (dist < minMouseDist) {
             minMouseDist = dist;
-            mouseClosestPoint = point as PointElement;
+            mouseClosestPoint = { dataIndex: i, dataX, dataY };
           }
         }
-        if (mouseClosestPoint && Number.isFinite(mouseClosestPoint.x) && Number.isFinite(mouseClosestPoint.y)) {
-          drawCrosshairs(ctx, mouseClosestPoint, chart.chartArea);
+        if (mouseClosestPoint) {
+          drawCrosshairs(ctx, { x: mouseClosestPoint.dataX, y: mouseClosestPoint.dataY }, chart.chartArea, chart);
         }
       }
     },
@@ -318,45 +310,36 @@ function crosshairHighlightPlugin(setPointOfInterest?: ((point : {x: number, y: 
         const datasetMeta = chart.getDatasetMeta(highlightDataset);
         if (!datasetMeta || !datasetMeta.data || datasetMeta.data.length === 0) return;
 
-        // Build a map from rounded x to point (cache on meta for perf)
-        const metaWithMap = datasetMeta as typeof datasetMeta & { _xPointMap?: Record<number, { dataIndex: number, x: number, y: number }> };
+        // Build a map from data x to point (cache on meta for perf)
+        const metaWithMap = datasetMeta as typeof datasetMeta & { _xPointMap?: Record<number, { dataIndex: number, dataX: number, dataY: number }> };
         metaWithMap._xPointMap = {};
         const dataset = chart.data.datasets[highlightDataset].data as number[];
         for (let i = 0; i < datasetMeta.data.length; ++i) {
-          const dataX = chart.data.labels ? chart.data.labels[i] : i + 1;
-          const px = Math.round(chart.scales.x.getPixelForValue(Number(dataX)));
-          const py = chart.scales.y.getPixelForValue(dataset[i]);
-          metaWithMap._xPointMap[px] = { dataIndex: i, x: px, y: py };
+          const dataX = Number(chart.data.labels ? chart.data.labels[i] : i + 1);
+          const dataY = dataset[i];
+          metaWithMap._xPointMap[dataX] = { dataIndex: i, dataX, dataY };
         }
         const xPointMap = metaWithMap._xPointMap;
 
-        // Find the closest point by rounded x
-        let closestPoint: { dataIndex: number, x: number, y: number } | null = null;
-        if (typeof lastX === "number") {
-          const rx = Math.round(lastX);
-          for (let offset = 0; offset <= 5; ++offset) {
-        if (xPointMap[rx + offset]) {
-          closestPoint = xPointMap[rx + offset];
-          break;
-        }
-        if (xPointMap[rx - offset]) {
-          closestPoint = xPointMap[rx - offset];
-          break;
-        }
+        // Find the closest point by data x
+        let closestPoint: { dataIndex: number, dataX: number, dataY: number } | null = null;
+        let minDist = Infinity;
+        for (let i = 0; i < datasetMeta.data.length; ++i) {
+          const dataX = Number(chart.data.labels ? chart.data.labels[i] : i + 1);
+          const dataY = (chart.data.datasets[highlightDataset].data as number[])[i];
+          const dist = Math.abs(dataX - lastX);
+          if (dist < minDist) {
+            minDist = dist;
+            closestPoint = { dataIndex: i, dataX, dataY };
           }
         }
-
         if (closestPoint) {
-          // Update lastPointOfInterest to new y
-          chart._lastPointOfInterest = { x: closestPoint.x, y: closestPoint.y };
+          // Update lastPointOfInterest to new y (data values)
+          chart._lastPointOfInterest = { x: closestPoint.dataX, y: closestPoint.dataY };
           if (setPointOfInterest) {
-            // Convert back to data values for callback
-            const dataIndex = closestPoint.dataIndex;
-            const dataX = chart.data.labels ? chart.data.labels[dataIndex] : dataIndex + 1;
-            const dataY = (chart.data.datasets[highlightDataset].data as number[])[dataIndex];
-            setPointOfInterest({ x: Number(dataX), y: dataY });
+            setPointOfInterest({ x: closestPoint.dataX, y: closestPoint.dataY });
           }
-          drawCrosshairs(ctx, { x: closestPoint.x, y: closestPoint.y } as PointElement, chart.chartArea);
+          drawCrosshairs(ctx, { x: closestPoint.dataX, y: closestPoint.dataY }, chart.chartArea, chart);
         } else {
           chart._lastPointOfInterest = undefined;
         }
@@ -381,10 +364,16 @@ function crosshairHighlightPlugin(setPointOfInterest?: ((point : {x: number, y: 
     },
   }
 
-  function drawCrosshairs(ctx: CanvasRenderingContext2D, closestPoint: PointElement, chartArea : ChartArea) {
+  function drawCrosshairs(ctx: CanvasRenderingContext2D, dataPoint: {x: number, y: number}, chartArea : ChartArea, chart: Chart) {
+    // Convert data values to pixel values for drawing
+    const px = chart.scales.x.getPixelForValue(dataPoint.x);
+    const py = chart.scales.y.getPixelForValue(dataPoint.y);
+    if (!Number.isFinite(px) || !Number.isFinite(py)) {
+      return;
+    }
     ctx.save();
     ctx.beginPath();
-    ctx.arc(closestPoint.x, closestPoint.y, 6, 0, 2 * Math.PI);
+    ctx.arc(px, py, 6, 0, 2 * Math.PI);
     ctx.fillStyle = "red";
     ctx.fill();
     ctx.restore();
@@ -396,13 +385,13 @@ function crosshairHighlightPlugin(setPointOfInterest?: ((point : {x: number, y: 
     ctx.setLineDash([4, 4]);
     // Vertical to x-axis
     ctx.beginPath();
-    ctx.moveTo(closestPoint.x, closestPoint.y);
-    ctx.lineTo(closestPoint.x, chartArea.bottom);
+    ctx.moveTo(px, py);
+    ctx.lineTo(px, chartArea.bottom);
     ctx.stroke();
     // Horizontal to y-axis
     ctx.beginPath();
-    ctx.moveTo(chartArea.left, closestPoint.y);
-    ctx.lineTo(closestPoint.x, closestPoint.y);
+    ctx.moveTo(chartArea.left, py);
+    ctx.lineTo(px, py);
     ctx.stroke();
     ctx.restore();
   }
