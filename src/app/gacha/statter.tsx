@@ -35,75 +35,76 @@ function PointOfInterestDisplay({
     }, [setHandlePoi]);
 
     return (
-        <>
-            <div className="flex items-center mb-2">
-                <input
-                    type="checkbox"
-                    id="applySparks"
-                    checked={applySparks}
-                    onChange={() => setApplySparks(!applySparks)}
-                    className="mr-2"
-                />
-                <label htmlFor="applySparks" className="text-gray-700 dark:text-gray-300">
+        <div className="flex flex-col items-center">
+            <button
+                type="button"
+                className={`px-2 py-1 rounded border flex items-center mb-2 ${applySparks ? "bg-blue-900 border-blue-500" : "border-gray-300"}`}
+                onClick={() => setApplySparks(!applySparks)}
+                aria-pressed={applySparks}
+            >
+                <span className="w-4 h-4 mr-2 flex items-center justify-center">
+                    {applySparks ? "✅" : "❌"}
+                </span>
+                <span className="text-gray-700 dark:text-gray-300">
                     Apply Sparks To Target
-                </label>
-            </div>
-            {gachaType === GachaType.SUPPORT_CARD ? (
-                <SupportCardPoiDisplay 
-                    pointOfInterest={pointOfInterest}
+                </span>
+            </button>
+            {gachaType === GachaType.SUPPORT_CARD &&
+                <SparksSelector
                     desiredBreaks={desiredBreaks}
                     setDesiredBreaks={setDesiredBreaks}
-                    applySparks={applySparks}
-                    pullRates={pullRates}
                 />
-            ) : 
-                <></>
-                // <TraineePoiDisplay pointOfInterest={pointOfInterest} />
             }
-        </>
+                <PoiDisplay 
+                    pointOfInterest={pointOfInterest}
+                    gachaType={gachaType}
+                    desiredBreaks={desiredBreaks}
+                />
+        </div>
     );
 }
-// NEXT: the range input to set desired breaks does not refresh the chart. Figure out the data flow
-function SupportCardPoiDisplay({pointOfInterest, desiredBreaks, setDesiredBreaks, applySparks, pullRates}: {pointOfInterest: {x: number, y: number} | null, desiredBreaks: number, setDesiredBreaks : (breaks: number) => void, applySparks: boolean, pullRates: PullRates}) {
+function SparksSelector({ desiredBreaks, setDesiredBreaks }: { desiredBreaks: number, setDesiredBreaks: (breaks: number) => void }) {
     return (
-        
-        <div>
-            <div className="flex flex-row space-x-2 mb-2">
+        <div className="flex flex-row space-x-2 mb-2">
             {Array.from({ length: MAX_BREAKS + 1 }, (_, i) => (
                 <button
-                key={i}
-                className={`px-2 py-1 rounded border ${desiredBreaks === i ? "bg-blue-900 border-blue-500" : "border-gray-300"} flex items-center`}
-                onClick={() => setDesiredBreaks(i)}
-                aria-label={`Set desired breaks to ${i}`}
-                type="button"
+                    key={i}
+                    className={`px-2 py-1 rounded border ${desiredBreaks === i ? "bg-blue-900 border-blue-500" : "border-gray-300"} flex items-center`}
+                    onClick={() => setDesiredBreaks(i)}
+                    aria-label={`Set desired breaks to ${i}`}
+                    type="button"
                 >
-                {Array.from({ length: MAX_BREAKS }, (_, j) =>
-                    j < i ? (
-                    // filled blue vertical rhombus
-                    <svg key={j} width="8" height="16" viewBox="0 0 8 16" className="mx-0.25" aria-hidden="true">
-                        <polygon points="4,2 8,8 4,14 0,8" fill="#2563eb" stroke="#2563eb" strokeWidth="1"/>
-                    </svg>
-                    ) : (
-                    // empty rhombus
-                    <svg key={j} width="8" height="16" viewBox="0 0 8 16" className="mx-0.25" aria-hidden="true">
-                        <polygon points="4,2 8,8 4,14 0,8" fill="none" stroke="#2563eb" strokeWidth="1"/>
-                    </svg>
-                    )
-                )}
+                    {Array.from({ length: MAX_BREAKS }, (_, j) =>
+                        j < i ? (
+                            <svg key={j} width="8" height="16" viewBox="0 0 8 16" className="mx-0.25" aria-hidden="true">
+                                <polygon points="4,2 8,8 4,14 0,8" fill="#2563eb" stroke="#2563eb" strokeWidth="1"/>
+                            </svg>
+                        ) : (
+                            <svg key={j} width="8" height="16" viewBox="0 0 8 16" className="mx-0.25" aria-hidden="true">
+                                <polygon points="4,2 8,8 4,14 0,8" fill="none" stroke="#2563eb" strokeWidth="1"/>
+                            </svg>
+                        )
+                    )}
                 </button>
             ))}
-            </div>
-            {pointOfInterest ? (
-            <div className="flex flex-col">
-                <p>Probability of the desired result in {pointOfInterest.x} pulls is {(pointOfInterest.y * 100).toFixed(2)}%</p>
-            </div>
-            ) : (
-            <p>No point of interest selected.</p>
-            )}
         </div>
-    )
+    );
 }
 
+function PoiDisplay({ pointOfInterest, gachaType, desiredBreaks }: { pointOfInterest: { x: number, y: number } | null, gachaType: GachaType, desiredBreaks: number }) {
+    return pointOfInterest ? (
+        <div className="flex flex-col">
+            <p>
+                Probability of {gachaType === GachaType.SUPPORT_CARD
+                    ? `${desiredBreaks} focus support card limit break${desiredBreaks !== 1 ? "s" : ""}`
+                    : "the focus trainee"
+                } in {pointOfInterest.x} pulls is {(pointOfInterest.y * 100).toFixed(2)}%
+            </p>
+        </div>
+    ) : (
+        <p>No point of interest selected.</p>
+    );
+}
 
 const MemoizedFunctionValueLineChart = React.memo(FunctionValueLineChart);
 
@@ -124,8 +125,11 @@ export default function GachaStatter({pullRates, gachaType} : {pullRates: PullRa
         if (handlePoiRef.current) handlePoiRef.current(point);
     };
     return (
-        <div className="border flex flex-col w-full">
-            <StatGraph pullRates={pullRates} setPointOfInterest={handleNewPoi} applySparks={applySparks} desiredBreaks={desiredBreaks} setDesiredBreaks={setDesiredBreaks}/>
+        <div className="border flex flex-col w-full items-center gap-2">
+            <div className="w-full">
+                <StatGraph pullRates={pullRates} setPointOfInterest={handleNewPoi} applySparks={applySparks} desiredBreaks={desiredBreaks} setDesiredBreaks={setDesiredBreaks}/>
+            </div>
+            <div className="text-sm text-gray-400 italic">You can click or drag a point on the graph to set your number of pulls or desired probability</div>
             <div className="flex flex-col">
                 <PointOfInterestDisplay setHandlePoi={setHandlePoi} gachaType={gachaType} desiredBreaks={desiredBreaks} setDesiredBreaks={setDesiredBreaks} applySparks={applySparks} setApplySparks={setApplySparks} pullRates={pullRates} />
             </div>

@@ -86,7 +86,7 @@ function Puller({ gachaType, pullRates }: { gachaType: GachaType, pullRates: Pul
 
             {result && (
                 <div
-                    className={`grid ${result.length === 1 ? "grid-cols-1" : "grid-cols-5"} gap-2 justify-items-center`}
+                    className={`grid ${result.length === 1 ? "grid-cols-1" : "grid-cols-5 xl:grid-cols-10"} gap-2 justify-items-center`}
                 >
                     {result.map((rarity, idx) => (
                         <div

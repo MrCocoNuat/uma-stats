@@ -212,6 +212,7 @@ function crosshairHighlightPlugin(setPointOfInterest?: ((point : {x: number, y: 
           nativeEvent instanceof MouseEvent &&
           nativeEvent.buttons === 1) ||
         (event.type === "mousemove" &&
+          typeof TouchEvent !== "undefined" && // some browsers don't support TouchEvent
           nativeEvent instanceof TouchEvent &&
           nativeEvent.touches && nativeEvent.touches.length > 0)
       ) {

@@ -13,7 +13,7 @@ export default function Gacha(){
     const [gachaType, setGachaType] = useState<GachaType>(GachaType.SUPPORT_CARD);
 
     return <div className="flex flex-col items-center w-full mx-4 h-full">
-        <div className="flex flex-col gap-4 items-center w-full max-w-sm md:max-w-md">
+        <div className="flex flex-col gap-4 items-center w-full max-w-sm md:max-w-md xl:max-w-4xl">
             <GachaTypeSelector gachaType={gachaType} setGachaType={setGachaType} />
             <RateEditor rates={pullRates} setPullRates={setPullRates} />
             <GachaStatter pullRates={pullRates} gachaType={gachaType}/>
@@ -84,9 +84,15 @@ function RateEditor({ rates, setPullRates: setRates }: { rates: PullRates, setPu
         { key: Rarity.SR_FOCUS, label: "SR Focus", writable: true },
         // { key: Rarity.R, label: "R", writable: false },
     ];
-
+// don't want to set up issues page yet so...
+// - no need to edit pull rates ever, instead just presets. Set up banners.json data with 4 years of data. Display pull rates+number of prizes in each category
+// - time for image assets - sidebars, illustrations
+// - header/footer, logo, subpage links, repo link, contact/copyright
+// - styling cleanup, everything needs to be prettier, graph colors, buttons
+// - 2 points on the graph is incredibly confusing
+// - trainee = smaller graph range
     return (
-        <div className="border-1 p-4 flex flex-col">
+        <div className="border-1 p-4 flex flex-col xl:flex-row gap-4">
             <div>
                 <h2 className="text-2xl font-bold mb-4">Edit Rates</h2>
                 <div className="flex gap-2 mb-2">
@@ -105,7 +111,7 @@ function RateEditor({ rates, setPullRates: setRates }: { rates: PullRates, setPu
                         </div>
                     ))}
                 </div>
-                <div className="self-end text-sm text-gray-500 italic">
+                <div className="self-end text-sm text-gray-400 italic">
                     Note: R rate is calculated as the remainder from 100%
                 </div>
                 {error && <div className="text-red-600 text-sm">{error}</div>}
