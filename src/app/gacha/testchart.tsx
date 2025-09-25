@@ -35,7 +35,7 @@ declare module "chart.js" {
 const DATASET_CLICK_Y_THRESHOLD =25; // pixels
 const CHART_Y_PADDING = 0.01; // fraction of chart height above 1.0, below 0.0 to add as padding
 
-function datasetClickPlugin(setHighlightDataset: ((index: number) => void)) {
+function datasetClickPlugin(setHighlightDataset: ((index: number) => void), registerPoiSetter? : (cb: (point: {x: number, y: number} | null) => void) => void) {
   return {
     id: "datasetClick",
     afterEvent: (chart: Chart & { _highlightDataset?: number }, args: { event: ChartEvent }) => {
@@ -146,7 +146,7 @@ function crosshairHighlightPlugin(setPointOfInterest?: ((point : {x: number, y: 
         chart._crosshairOverlayCanvas = overlay;
       }
     },
-    afterEvent: (chart: Chart  & {_crosshairOverlayCanvas? : HTMLCanvasElement, _lastPointOfInterest?: {x: number, y: number}, _highlightDataset?: number, _lastMousePosition?: {x: number, y: number} }, args: { event: ChartEvent }) => {
+    afterEvent: (chart: Chart  & {_crosshairOverlayCanvas? : HTMLCanvasElement, _lastPointOfInterest?: {x: number, y: number}, _highlightDataset?: number }, args: { event: ChartEvent }) => {
       // Get overlay canvas and context
       const overlay: HTMLCanvasElement | undefined = chart._crosshairOverlayCanvas;
       if (!overlay) return;
@@ -167,7 +167,6 @@ function crosshairHighlightPlugin(setPointOfInterest?: ((point : {x: number, y: 
       // Track the last mouse position for afterDraw (store as data value)
       const mouseDataX = chart.scales.x.getValueForPixel(event.x) ?? 0;
       const mouseDataY = chart.scales.y.getValueForPixel(event.y) ?? 0;
-      chart._lastMousePosition = { x: mouseDataX, y: mouseDataY };
 
       // Clear overlay before drawing new crosshairs to avoid artifacts.
       ctx.clearRect(0, 0, overlay.width, overlay.height);
@@ -226,9 +225,9 @@ function crosshairHighlightPlugin(setPointOfInterest?: ((point : {x: number, y: 
         }
       }
       // Highlight the mouse point
-      drawCrosshairs(ctx, { x: closestPoint.dataX, y: closestPoint.dataY }, chartArea, chart);
+      //drawCrosshairs(ctx, { x: closestPoint.dataX, y: closestPoint.dataY }, chartArea, chart);
     },
-    afterDraw(chart: Chart & { _crosshairOverlayCanvas?: HTMLCanvasElement, _lastPointOfInterest?: { x: number, y: number }, _highlightDataset?: number, _lastMousePosition?: {x: number, y: number} }) {
+    afterDraw(chart: Chart & { _crosshairOverlayCanvas?: HTMLCanvasElement, _lastPointOfInterest?: { x: number, y: number }, _highlightDataset?: number }) {
       // Draw animated crosshair on every frame
       console.debug("afterDraw crosshairHighlight");
       const overlay: HTMLCanvasElement | undefined = chart._crosshairOverlayCanvas;
@@ -256,24 +255,6 @@ function crosshairHighlightPlugin(setPointOfInterest?: ((point : {x: number, y: 
       }
       if (closestPoint) {
         drawCrosshairs(ctx, { x: closestPoint.dataX, y: closestPoint.dataY }, chart.chartArea, chart);
-      }
-      // Also redraw the crosshair at the mouse position if available
-      if (chart._lastMousePosition) {
-        // Find the closest point by data x
-        let mouseClosestPoint: { dataIndex: number, dataX: number, dataY: number } | null = null;
-        let minMouseDist = Infinity;
-        for (let i = 0; i < datasetMeta.data.length; ++i) {
-          const dataX = Number(chart.data.labels ? chart.data.labels[i] : i + 1);
-        const dataY = chart.scales.y.getValueForPixel(datasetMeta.data[i].y) as number;
-          const dist = Math.abs(dataX - chart._lastMousePosition.x);
-          if (dist < minMouseDist) {
-            minMouseDist = dist;
-            mouseClosestPoint = { dataIndex: i, dataX, dataY };
-          }
-        }
-        if (mouseClosestPoint) {
-          drawCrosshairs(ctx, { x: mouseClosestPoint.dataX, y: mouseClosestPoint.dataY }, chart.chartArea, chart);
-        }
       }
     },
     afterUpdate(chart : Chart & {_crosshairOverlayCanvas? : HTMLCanvasElement, _lastPointOfInterest?: {x: number, y: number}, _highlightDataset?: number }) {
@@ -359,13 +340,13 @@ function crosshairHighlightPlugin(setPointOfInterest?: ((point : {x: number, y: 
     ctx.save();
     ctx.beginPath();
     ctx.arc(px * dpr, py * dpr, 6 * dpr, 0, 2 * Math.PI);
-    ctx.fillStyle = "red";
+    ctx.fillStyle = "cyan";
     ctx.fill();
     ctx.restore();
 
     // Draw crosshair lines to axes
     ctx.save();
-    ctx.strokeStyle = "rgba(200,0,0,0.5)";
+    ctx.strokeStyle = "rgba(39, 205, 255, 1)";
     ctx.lineWidth = 3 * dpr;
     ctx.setLineDash([4 * dpr, 4 * dpr]);
     // Vertical to x-axis
@@ -440,7 +421,7 @@ function FunctionValueLineChart(props: FunctionValueLineChartProps) {
         label: yLabel + idx,
         data: dataset,
         radius: 0,
-        borderColor: idx === highlightDataset ? "red" : "rgba(80, 57, 57, 1)",
+        borderColor: idx === highlightDataset ? "blue" : "rgba(34, 37, 77, 1)",
         order: idx === highlightDataset ? 1 : 99, // bring highlighted dataset to front
       }))
     : [
@@ -448,7 +429,7 @@ function FunctionValueLineChart(props: FunctionValueLineChartProps) {
           label: yLabel,
           data,
           radius: 0,
-          borderColor: "red",
+          borderColor: "cyan",
         },
       ];
 

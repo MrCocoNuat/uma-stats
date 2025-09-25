@@ -38,7 +38,7 @@ function PointOfInterestDisplay({
         <div className="flex flex-col items-center">
             <button
                 type="button"
-                className={`px-2 py-1 rounded border flex items-center mb-2 ${applySparks ? "bg-blue-900 border-blue-500" : "border-gray-300"}`}
+                className={`px-2 py-1 rounded border flex items-center mb-2 hover:bg-blue-700 hover:border-blue-500 active:bg-blue-900 active:border-blue-500 ${applySparks ? "bg-blue-900 border-blue-500" : "border-gray-300"}`}
                 onClick={() => setApplySparks(!applySparks)}
                 aria-pressed={applySparks}
             >
@@ -69,7 +69,7 @@ function SparksSelector({ desiredBreaks, setDesiredBreaks }: { desiredBreaks: nu
             {Array.from({ length: MAX_BREAKS + 1 }, (_, i) => (
                 <button
                     key={i}
-                    className={`px-2 py-1 rounded border ${desiredBreaks === i ? "bg-blue-900 border-blue-500" : "border-gray-300"} flex items-center`}
+                    className={`px-2 py-1 rounded border hover:bg-blue-700 hover:border-blue-500 active:bg-blue-900 active:border-blue-500 ${desiredBreaks === i ? "bg-blue-900 border-blue-500" : "border-gray-300"} flex items-center`}
                     onClick={() => setDesiredBreaks(i)}
                     aria-label={`Set desired breaks to ${i}`}
                     type="button"
@@ -95,14 +95,23 @@ function PoiDisplay({ pointOfInterest, gachaType, desiredBreaks }: { pointOfInte
     return pointOfInterest ? (
         <div className="flex flex-col">
             <p>
-                Probability of {gachaType === GachaType.SUPPORT_CARD
-                    ? `${desiredBreaks} focus support card limit break${desiredBreaks !== 1 ? "s" : ""}`
-                    : "the focus trainee"
-                } in {pointOfInterest.x} pulls is {(pointOfInterest.y * 100).toFixed(2)}%
+                Probability of pulling 
+                {gachaType === GachaType.SUPPORT_CARD
+                    ? ` the focus support card ${desiredBreaks > 0 ? ` to ${desiredBreaks === MAX_BREAKS? "M" : desiredBreaks}LB` : ""} `
+                    : " the focus trainee "
+                }
+                in 
+                <span className="font-mono font-bold text-cyan-300 text-lg mx-1">
+                    {pointOfInterest.x}
+                </span>
+                pulls is 
+                <span className="font-mono font-bold text-cyan-300 text-lg mx-1">
+                    {(pointOfInterest.y * 100).toFixed(2)}%
+                </span>
             </p>
         </div>
     ) : (
-        <p>No point of interest selected.</p>
+        <p>No point of interest selected</p>
     );
 }
 
@@ -112,6 +121,10 @@ export default function GachaStatter({pullRates, gachaType} : {pullRates: PullRa
 
     const [desiredBreaks, setDesiredBreaks] = useState(MAX_BREAKS);
     const [applySparks, setApplySparks] = useState(true); // need to config this based off of desired rarity
+    useEffect(() => {
+        // reset desired breaks when gacha type changes
+        setDesiredBreaks(gachaType === GachaType.SUPPORT_CARD? MAX_BREAKS : 0);
+    }, [gachaType]);
 
     // callback registered by child chart to receive point of interest updates -- performance optimization
     // Store the setter for point of interest in a ref
@@ -125,11 +138,11 @@ export default function GachaStatter({pullRates, gachaType} : {pullRates: PullRa
         if (handlePoiRef.current) handlePoiRef.current(point);
     };
     return (
-        <div className="border flex flex-col w-full items-center gap-2">
+        <div className="p-4 flex flex-col w-full items-center gap-2 bg-neutral-900 rounded-xl">
             <div className="w-full">
-                <StatGraph pullRates={pullRates} setPointOfInterest={handleNewPoi} applySparks={applySparks} desiredBreaks={desiredBreaks} setDesiredBreaks={setDesiredBreaks}/>
+                <StatGraph gachaType={gachaType} pullRates={pullRates} setPointOfInterest={handleNewPoi} applySparks={applySparks} desiredBreaks={desiredBreaks} setDesiredBreaks={setDesiredBreaks}/>
             </div>
-            <div className="text-sm text-gray-400 italic">You can click or drag a point on the graph to set your number of pulls or desired probability</div>
+            <div className="text-sm text-gray-400 italic">You can also click or drag a point on the graph to set your number of pulls or desired probability</div>
             <div className="flex flex-col">
                 <PointOfInterestDisplay setHandlePoi={setHandlePoi} gachaType={gachaType} desiredBreaks={desiredBreaks} setDesiredBreaks={setDesiredBreaks} applySparks={applySparks} setApplySparks={setApplySparks} pullRates={pullRates} />
             </div>
@@ -142,7 +155,7 @@ export default function GachaStatter({pullRates, gachaType} : {pullRates: PullRa
 
 // shows, given number of hits, the cumdistribution of number of pulls needed to get that many hits
 // line graph: x axis = number of hits, y axis = probability
-function StatGraph({pullRates, setPointOfInterest, applySparks, desiredBreaks, setDesiredBreaks}: {pullRates: PullRates, setPointOfInterest: (point : {x: number, y: number} | null) => void, applySparks: boolean, desiredBreaks: number, setDesiredBreaks: (breaks: number) => void}){
+function StatGraph({gachaType, pullRates, setPointOfInterest, applySparks, desiredBreaks, setDesiredBreaks}: {gachaType: GachaType, pullRates: PullRates, setPointOfInterest: (point : {x: number, y: number} | null) => void, applySparks: boolean, desiredBreaks: number, setDesiredBreaks: (breaks: number) => void}){
 
     // using statistics.js, create a NB distribution for SSR_FOCUS and SR_FOCUS rarities based on the pull rates
     // Example: SSR_FOCUS and SR_FOCUS are keys in pullRates with probability values
@@ -152,10 +165,10 @@ function StatGraph({pullRates, setPointOfInterest, applySparks, desiredBreaks, s
     // construct the negative binomial distribution for number of pulls to get r hits
     const distributions = useMemo(() => {
         // First, build the base distributions as before
-        const base = Array.from({length: 5}, (_, r) => {
+        const base = Array.from({length: gachaType === GachaType.SUPPORT_CARD? 5 : 1}, (_, r) => {
             const cdf = negativeBinomialCdf(r + 1, ssrFocusProb, MAX_PULLS);
             // Pad with zeros for the impossibility of getting r hits in fewer than r pulls
-            return Array(r + 1).fill(0).concat(cdf).slice(0, MAX_PULLS);
+            return Array(r + 1).fill(0).concat(cdf).slice(0, gachaType === GachaType.SUPPORT_CARD? MAX_PULLS : HITS_PER_SPARK);
         });
 
         if (!applySparks) return base;
@@ -172,7 +185,7 @@ function StatGraph({pullRates, setPointOfInterest, applySparks, desiredBreaks, s
                 return arr && arr[i] !== undefined ? arr[i] : 1.0;
             })
         );
-    }, [ssrFocusProb, applySparks]);
+    }, [ssrFocusProb, applySparks, gachaType]);
     
     return <MemoizedFunctionValueLineChart xLabel={"Number of Pulls"} data={distributions} highlightDataset={desiredBreaks} setHighlightDataset={setDesiredBreaks} setPointOfInterest={setPointOfInterest}/>
 }

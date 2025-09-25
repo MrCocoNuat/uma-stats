@@ -9,7 +9,7 @@ export default function GachaSimulator(
         {pullRates, gachaType}: {pullRates: PullRates, gachaType: GachaType}
 ){
     return (
-        <div className="border flex flex-col items-center">
+        <div className="p-4 flex flex-col items-center bg-neutral-900 rounded-xl">
             <h2 className="text-2xl font-bold">Simulator</h2>
             <Puller gachaType={gachaType} pullRates={pullRates} />
         </div>
@@ -71,13 +71,13 @@ function Puller({ gachaType, pullRates }: { gachaType: GachaType, pullRates: Pul
         <div className="mt-4 flex flex-col items-center">
             <div className="flex gap-2 mb-2">
                 <button
-                    className="px-4 py-2 bg-green-600 text-white rounded"
+                    className="px-4 py-2 bg-blue-800 hover:bg-blue-700 active:bg-blue-900 border border-blue-500 text-white rounded"
                     onClick={() => handlePull(PullType.ONE)}
                 >
                     Pull 1
                 </button>
                 <button
-                    className="px-4 py-2 bg-green-600 text-white rounded"
+                    className="px-4 py-2 bg-blue-800 hover:bg-blue-700 active:bg-blue-900 border border-blue-500 text-white rounded"
                     onClick={() => handlePull(PullType.TEN)}
                 >
                     Pull 10

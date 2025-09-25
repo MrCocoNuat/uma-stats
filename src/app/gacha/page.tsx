@@ -13,7 +13,8 @@ export default function Gacha(){
     const [gachaType, setGachaType] = useState<GachaType>(GachaType.SUPPORT_CARD);
 
     return <div className="flex flex-col items-center w-full mx-4 h-full">
-        <div className="flex flex-col gap-4 items-center w-full max-w-sm md:max-w-md xl:max-w-4xl">
+        <div className="flex flex-col gap-4 items-center w-full max-w-sm md:max-w-md xl:max-w-4xl p-4 bg-slate-900 rounded">
+            <h1 className="text-2xl md:text-3xl">Uma Musume: Gacha Statistics</h1>
             <GachaTypeSelector gachaType={gachaType} setGachaType={setGachaType} />
             <RateEditor rates={pullRates} setPullRates={setPullRates} />
             <GachaStatter pullRates={pullRates} gachaType={gachaType}/>
@@ -92,7 +93,7 @@ function RateEditor({ rates, setPullRates: setRates }: { rates: PullRates, setPu
 // - 2 points on the graph is incredibly confusing
 // - trainee = smaller graph range
     return (
-        <div className="border-1 p-4 flex flex-col xl:flex-row gap-4">
+        <div className="p-4 flex flex-col xl:flex-row gap-4 bg-neutral-900 rounded-xl">
             <div>
                 <h2 className="text-2xl font-bold mb-4">Edit Rates</h2>
                 <div className="flex gap-2 mb-2">
@@ -128,29 +129,12 @@ function RateEditor({ rates, setPullRates: setRates }: { rates: PullRates, setPu
                 }].map(({ type, rates: presetRates }) => (
                     <button
                         key={type}
-                        className="mt-2 px-4 py-2 bg-blue-600 text-white rounded"
+                        className="mt-2 px-2 py-1 rounded border bg-blue-800 hover:bg-blue-700 active:bg-blue-900 border-blue-500"
                         onClick={() => setRates(presetRates)}
                     >
                         {type}
                     </button>
                 ))}
-                {[{
-                    type: "Banner Placeholder 1",
-                    rates: SINGLE_FOCUS_RATES,
-                },
-                {
-                    type: "Banner Placeholder 2",
-                    rates: DOUBLE_FOCUS_RATES,
-                }].map(({ type, rates: presetRates }) => (
-                    <button
-                        key={type}
-                        className="mt-2 px-4 py-2 bg-blue-600 text-white rounded"
-                        onClick={() => setRates(presetRates)}
-                    >
-                        {type}
-                    </button>
-                ))
-                }
             </div>
                 
         </div>
@@ -159,7 +143,7 @@ function RateEditor({ rates, setPullRates: setRates }: { rates: PullRates, setPu
 
 function GachaTypeSelector({ gachaType, setGachaType }: { gachaType: GachaType, setGachaType: (type: GachaType) => void }) {
     return (
-        <div className="border-1 flex flex-col items-center w-full"> 
+        <div className="flex flex-col items-center w-full bg-neutral-900 rounded-xl p-4"> 
             <div className="flex justify-center gap-2 w-full">
                 {[{ type: GachaType.TRAINEE, label: "Trainee" }, { type: GachaType.SUPPORT_CARD, label: "Support Card" }].map(({ type, label }) => {
                     const selected = gachaType === type;
@@ -168,10 +152,10 @@ function GachaTypeSelector({ gachaType, setGachaType }: { gachaType: GachaType, 
                             key={type}
                             type="button"
                             className={
-                                "p-2 rounded transition-bg w-full " +
+                                "p-2 rounded w-full " +
                                 (selected
-                                    ? "bg-gradient-to-br from-red-700 to-green-700 text-white"
-                                    : "bg-gradient-to-br text-white hover:from-green-800 hover:to-blue-800 border border-gray-700")
+                                    ? "bg-blue-800 hover:bg-blue-700 active:bg-blue-900 border-blue-500 border"
+                                    : "hover:bg-blue-700 active:bg-blue-900 border")
                             }
                             onClick={() => setGachaType(type)}
                             style={{ minWidth: 120 }}
