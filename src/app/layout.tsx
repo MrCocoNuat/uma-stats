@@ -38,21 +38,21 @@ export default function RootLayout({
               </header>
         {children}
             </ThemeProvider>
+        <footer className="p-4 text-center text-sm text-gray-500">
+          <p>&copy; {new Date().getFullYear()} MrCocoNuat</p>
+          <p>This site is not affiliated with Cygames or any of its partners.</p>
+          <p>Uma Musume and all related trademarks are the property of Cygames.</p>
+          <p>
+            GPLv3 Source code available on{" "}
+            <a
+              href="https://github.com/MrCocoNuat/uma-stats"
+              className="text-blue-500 hover:underline"
+            >
+              GitHub
+            </a>
+          </p>
+        </footer>
       </body>
-      <footer className="p-4 text-center text-sm text-gray-500">
-        <p>&copy; {new Date().getFullYear()} MrCocoNuat</p>
-        <p>This site is not affiliated with Cygames or any of its partners.</p>
-        <p>Uma Musume and all related trademarks are the property of Cygames.</p>
-        <p>
-          GPLv3 Source code available on{" "}
-          <a
-            href="https://github.com/MrCocoNuat/uma-stats"
-            className="text-blue-500 hover:underline"
-          >
-            GitHub
-          </a>
-        </p>
-      </footer>
     </html>
   );
 }
